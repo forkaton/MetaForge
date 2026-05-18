@@ -10,7 +10,7 @@ sealed interface HeroSelectUiState {
         val filteredHeroes: List<Hero>,
         val selectedRole: HeroRole? = null,
         val searchQuery: String = "",
-        val pickedHeroNames: Set<String> = emptySet()
+        val pickedHeroNames: Set<String> = emptySet() // ← tambah ini
     ) : HeroSelectUiState
     data class Error(val message: String) : HeroSelectUiState
 }

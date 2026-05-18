@@ -11,8 +11,9 @@ data class SynergyResult(
 )
 
 data class HeroRecommendation(
-    val name: String,
+    val heroName: String,
     val role: String,
     val reason: String,
-    val counterScore: Int
+    val counterScore: Int,
+    val warning: String? = null  // ← tambah ini, dipakai DraftScreen
 )

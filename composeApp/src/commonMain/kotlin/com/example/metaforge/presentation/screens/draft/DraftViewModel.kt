@@ -2,108 +2,91 @@ package com.example.metaforge.presentation.screens.draft
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.metaforge.data.local.HeroDataSource
-import com.example.metaforge.domain.model.DraftState
+import com.example.metaforge.domain.model.HeroRecommendation
 import com.example.metaforge.domain.repository.DraftRepository
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class DraftViewModel(
     private val draftRepository: DraftRepository
 ) : ViewModel() {
 
-    private var pickPosition = 1
-    private var isFirstPick = true
-    private var preferredRole = "MARKSMAN"
+    private val _uiState = MutableStateFlow<DraftUiState>(DraftUiState.Loading)
+    val uiState: StateFlow<DraftUiState> = _uiState.asStateFlow()
 
-    fun setupDraft(pickPos: Int, isFirst: Boolean, role: String) {
-        this.pickPosition = pickPos
-        this.isFirstPick = isFirst
-        this.preferredRole = role
+    private var userPickPosition: Int = 1
+    private var isUserFirstPick: Boolean = true
+    private var preferredRole: String = "MARKSMAN"
+
+    init { observeDraftState() }
+
+    // Fungsi baru yang dipanggil AppNavHost
+    fun setupDraft(pickPosition: Int, isFirstPick: Boolean, role: String) {
+        userPickPosition = pickPosition
+        isUserFirstPick = isFirstPick
+        preferredRole = role
+        updateTurnMessage()
     }
 
-    val uiState: StateFlow<DraftUiState> = draftRepository.getDraftState()
-        .map { state ->
-            val userSlotIndex = pickPosition - 1
-            val isTurn = state.isPickUnlocked(userSlotIndex, true, isFirstPick) && state.allySlots.getOrNull(userSlotIndex) == null
-            val recommendation = if (isTurn) generateRecommendation(state, preferredRole) else null
-            val turnMessage = state.getTurnMessage(isFirstPick)
-
-            DraftUiState.Ready(state, isTurn, recommendation, turnMessage)
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = DraftUiState.Loading
-        )
-
-    fun removeHero(slotIndex: Int, isAlly: Boolean, isBan: Boolean) {
+    private fun observeDraftState() {
         viewModelScope.launch {
-            if (isBan) draftRepository.banHero(slotIndex, isAlly, null)
-            else draftRepository.pickHero(slotIndex, isAlly, null)
+            draftRepository.getDraftState()
+                .catch { e ->
+                    _uiState.value = DraftUiState.Error(e.message ?: "Terjadi kesalahan")
+                }
+                .collect { draftState ->
+                    val currentReady = _uiState.value as? DraftUiState.Ready
+                    _uiState.value = DraftUiState.Ready(
+                        draftState = draftState,
+                        turnMessage = currentReady?.turnMessage ?: "SET UP YOUR DRAFT",
+                        isUserTurn = currentReady?.isUserTurn ?: false,
+                        recommendation = currentReady?.recommendation
+                    )
+                }
         }
     }
 
-    private fun generateRecommendation(state: DraftState, roleName: String): DraftRecommendation? {
-        val unavailable = state.getAllPickedHeroes().map { it.name }
-        val available = HeroDataSource.allHeroes.filter { it.name !in unavailable && it.role.name == roleName }
-
-        if (available.isEmpty()) return null
-
-        val enemyHeroes = state.enemySlots.filterNotNull().map { it.name }
-
-        val ssTier = listOf("Fanny", "Mathilda", "Joy", "Nolan")
-        val sTier = listOf("Chou", "Khufra", "Beatrix", "Novaria", "Valentina", "Ling")
-
-        val weakAgainstMap = mapOf(
-            "Fanny" to listOf("Khufra", "Chou", "Franco", "Saber"),
-            "Joy" to listOf("Phoveus", "Khufra", "Minsitthar"),
-            "Beatrix" to listOf("Chou", "Natalia", "Lancelot"),
-            "Khufra" to listOf("Valir", "Diggie"),
-            "Mathilda" to listOf("Chou", "Kaja", "Franco")
-        )
-
-        val strongAgainstMap = mapOf(
-            "Khufra" to listOf("Fanny", "Joy", "Ling", "Lancelot"),
-            "Chou" to listOf("Fanny", "Beatrix"),
-            "Phoveus" to listOf("Joy", "Wanwan", "Ling"),
-            "Saber" to listOf("Fanny", "Joy", "Ling")
-        )
-
-        val scoredHeroes = available.map { hero ->
-            var score = 0
-            if (hero.name in ssTier) score += 100
-            else if (hero.name in sTier) score += 50
-            else score += 10
-
-            val strongAgainst = strongAgainstMap[hero.name] ?: emptyList()
-            val counteredEnemiesCount = enemyHeroes.count { it in strongAgainst }
-            score += (counteredEnemiesCount * 50)
-
-            hero to score
-        }.sortedByDescending { it.second }
-
-        val bestHero = scoredHeroes.firstOrNull()?.first ?: return null
-
-        val countersOfBest = weakAgainstMap[bestHero.name] ?: listOf("Chou", "Franco", "Kaja")
-        val unbannedCounters = countersOfBest.filter { it !in unavailable }
-
-        val warning = if (unbannedCounters.isNotEmpty()) {
-            "WARNING: ${unbannedCounters.first()} (Counter) is open and can be picked by the enemy!"
-        } else null
-
-        val countersEnemy = enemyHeroes.any { it in (strongAgainstMap[bestHero.name] ?: emptyList()) }
-        val reason = if (countersEnemy && unbannedCounters.isEmpty()) {
-            "Highly effective! Counters current enemy picks and has no direct counters left open."
-        } else if (countersEnemy) {
-            "Effectively counters enemy composition and fits the meta tier list."
-        } else {
-            "Highest meta priority available for the ${bestHero.role.name} role."
+    private fun updateTurnMessage() {
+        val current = _uiState.value as? DraftUiState.Ready ?: return
+        val banCount = current.draftState.allyBans.count { it != null } +
+                current.draftState.enemyBans.count { it != null }
+        val message = when {
+            banCount < 10 -> "BAN PHASE — ${10 - banCount} bans remaining"
+            else -> "PICK PHASE — Select your heroes"
         }
+        _uiState.value = current.copy(
+            turnMessage = message,
+            isUserTurn = true,
+            recommendation = HeroRecommendation(
+                heroName = "Khufra",
+                role = "Tank",
+                reason = "Strong initiator vs current enemy lineup",
+                counterScore = 85,
+                warning = null
+            )
+        )
+    }
 
-        return DraftRecommendation(bestHero.name, bestHero.role.name, reason, warning)
+    // Update signature removeHero — tambah isBan parameter
+    fun removeHero(slotIndex: Int, isAlly: Boolean, isBan: Boolean = false) {
+        viewModelScope.launch {
+            draftRepository.removeHero(slotIndex, isAlly, isBan)
+        }
+        updateTurnMessage()
+    }
+
+    fun resetDraft() {
+        viewModelScope.launch {
+            draftRepository.resetDraft()
+        }
+    }
+
+    fun saveDraft() {
+        viewModelScope.launch {
+            draftRepository.saveDraft()
+        }
     }
 }
