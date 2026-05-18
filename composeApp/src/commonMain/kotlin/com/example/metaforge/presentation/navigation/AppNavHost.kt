@@ -1,12 +1,7 @@
 package com.example.metaforge.presentation.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
@@ -18,6 +13,8 @@ import com.example.metaforge.presentation.screens.draft.DraftViewModel
 import com.example.metaforge.presentation.screens.heroselect.HeroSelectScreen
 import com.example.metaforge.presentation.screens.heroselect.HeroListScreen
 import com.example.metaforge.presentation.screens.heroselect.HeroInfoScreen
+import com.example.metaforge.presentation.screens.counterpick.CounterPickScreen
+import com.example.metaforge.presentation.screens.synergy.SynergyScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -54,7 +51,7 @@ fun AppNavHost(
 
             DraftScreen(
                 isUserFirstPick = args.isFirstPick,
-                userPickPosition = args.pickPosition, // Mengirim urutan pick user ke layar Draft
+                userPickPosition = args.pickPosition,
                 viewModel = draftViewModel,
                 onNavigateToHeroSelect = { slotIndex, isAlly, isBan ->
                     navController.navigate(Route.HeroSelect(slotIndex, isAlly, isBan))
@@ -77,7 +74,11 @@ fun AppNavHost(
             val route = backStackEntry.toRoute<Route.HeroInfo>()
             HeroInfoScreen(heroId = route.heroId, heroName = route.heroName, heroRole = route.heroRole, onNavigateBack = { navController.popBackStack() })
         }
-        composable<Route.CounterPick> { Box(Modifier.fillMaxSize(), Alignment.Center) { Button({navController.popBackStack()}) { Text("Back") } } }
-        composable<Route.Synergy> { Box(Modifier.fillMaxSize(), Alignment.Center) { Button({navController.popBackStack()}) { Text("Back") } } }
+        composable<Route.CounterPick> {
+            CounterPickScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable<Route.Synergy> {
+            SynergyScreen(onNavigateBack = { navController.popBackStack() })
+        }
     }
 }
