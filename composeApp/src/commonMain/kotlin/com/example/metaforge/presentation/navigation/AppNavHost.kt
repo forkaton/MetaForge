@@ -15,6 +15,7 @@ import com.example.metaforge.presentation.screens.heroselect.HeroListScreen
 import com.example.metaforge.presentation.screens.heroselect.HeroInfoScreen
 import com.example.metaforge.presentation.screens.counterpick.CounterPickScreen
 import com.example.metaforge.presentation.screens.synergy.SynergyScreen
+import com.example.metaforge.presentation.screens.settings.SettingsScreen
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -30,7 +31,8 @@ fun AppNavHost(
         composable<Route.Home> {
             HomeScreen(
                 onNavigateToDraftSetup = { navController.navigate(Route.DraftSetup) },
-                onNavigateToHeroList = { navController.navigate(Route.HeroList) }
+                onNavigateToHeroList = { navController.navigate(Route.HeroList) },
+                onNavigateToSettings = { navController.navigate(Route.Settings) }
             )
         }
         composable<Route.DraftSetup> {
@@ -79,6 +81,9 @@ fun AppNavHost(
         }
         composable<Route.Synergy> {
             SynergyScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable<Route.Settings> {
+            SettingsScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
