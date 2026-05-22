@@ -7,8 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,19 +30,43 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun DraftScreen(
     isUserFirstPick: Boolean,
-    userPickPosition: Int, // Menangkap parameter posisi pick user
+    userPickPosition: Int,
     viewModel: DraftViewModel,
     onNavigateToHeroSelect: (Int, Boolean, Boolean) -> Unit,
     onNavigateToCounter: () -> Unit,
-    onNavigateToSynergy: () -> Unit
+    onNavigateToSynergy: () -> Unit,
+    onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("DRAFT ARENA", color = Color.White, fontWeight = FontWeight.Black, letterSpacing = 2.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                title = {
+                    Text(
+                        "DRAFT ARENA",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToCounter) {
+                        Icon(Icons.Default.Search, "Counter", tint = Color.White)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         }
     ) { paddingValues ->

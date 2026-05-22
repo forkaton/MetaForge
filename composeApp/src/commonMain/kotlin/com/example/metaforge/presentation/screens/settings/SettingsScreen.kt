@@ -5,15 +5,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onNavigateBack: () -> Unit) {
+fun SettingsScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: SettingsViewModel = koinViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,9 +68,9 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    SettingItem("App Version", "1.0.0 Sprint 2")
-                    SettingItem("Hero Database", "30 Meta Heroes")
-                    SettingItem("AI Engine", "Gemini API")
+                    SettingItem("App Version", uiState.appVersion)
+                    SettingItem("Hero Database", "${uiState.heroCount} Meta Heroes")
+                    SettingItem("AI Engine", uiState.aiEngine)
                 }
             }
         }
@@ -77,10 +85,14 @@ private fun SettingItem(label: String, value: String) {
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, color = Color.Gray,
-            style = MaterialTheme.typography.bodyMedium)
-        Text(value, color = Color.White,
+        Text(
+            label, color = Color.Gray,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            value, color = Color.White,
             fontWeight = FontWeight.Bold,
-            style = MaterialTheme.typography.bodyMedium)
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

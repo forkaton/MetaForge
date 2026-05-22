@@ -5,35 +5,41 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Palet Profesional Esports
-val MetaForgeBg = Color(0xFF08223a)         // Background Utama (Sangat Gelap)
-val MetaForgeSurface = Color(0xFF092b49)    // Latar Kartu/Panel
-val MetaForgeSurfaceVariant = Color(0xFF0e3a61) // Panel Aktif / Hover
-val MetaForgeSecondary = Color(0xFF194e7d)  // Border / Aksen Minor
-val MetaForgePrimary = Color(0xFF2b6599)    // Tombol Utama / Aksen Mayor
+// MetaForge Color Palette
+object MetaForgeColors {
+    val CyberBlue = Color(0xFF00BFFF)
+    val CyberGold = Color(0xFFFFD700)
+    val CyberRed = Color(0xFFFF4444)
+    val DeepNavy = Color(0xFF0D0D1A)
+    val DarkCard = Color(0xFF16213E)
+    val DarkerCard = Color(0xFF0F3460)
+    val SurfaceCard = Color(0xFF1A1A2E)
+    val TextPrimary = Color(0xFFE0E0E0)
+    val TextSecondary = Color(0xFF9E9E9E)
+    val GreenSuccess = Color(0xFF00E676)
+    val OrangeWarning = Color(0xFFFF9800)
+}
 
-// Warna Fungsional
-val MetaForgeRed = Color(0xFFE53935)   // Enemy / Ban / Warning
-val MetaForgeGreen = Color(0xFF43A047) // Synergy / Good Matchup
-val MetaForgeGold = Color(0xFFFFD700)  // Premium / Tier SS
-
-private val MetaForgeColorScheme = darkColorScheme(
-    background = MetaForgeBg,
-    surface = MetaForgeSurface,
-    surfaceVariant = MetaForgeSurfaceVariant,
-    primary = MetaForgePrimary,
-    secondary = MetaForgeSecondary,
-    error = MetaForgeRed,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.White
+private val MetaForgeDarkScheme = darkColorScheme(
+    primary = MetaForgeColors.CyberBlue,
+    secondary = MetaForgeColors.CyberGold,
+    tertiary = MetaForgeColors.GreenSuccess,
+    error = MetaForgeColors.CyberRed,
+    background = MetaForgeColors.DeepNavy,
+    surface = MetaForgeColors.DarkCard,
+    surfaceVariant = MetaForgeColors.SurfaceCard,
+    onPrimary = Color.Black,
+    onSecondary = Color.Black,
+    onBackground = MetaForgeColors.TextPrimary,
+    onSurface = MetaForgeColors.TextPrimary,
+    onSurfaceVariant = MetaForgeColors.TextSecondary,
+    outline = MetaForgeColors.CyberBlue.copy(alpha = 0.3f)
 )
 
 @Composable
 fun MetaForgeTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = MetaForgeColorScheme,
+        colorScheme = MetaForgeDarkScheme,
         content = content
     )
 }

@@ -13,8 +13,11 @@ import com.example.metaforge.data.repository.DraftRepositoryImpl
 import com.example.metaforge.domain.repository.AIRepository
 import com.example.metaforge.domain.repository.DraftRepository
 import com.example.metaforge.presentation.screens.counterpick.CounterPickViewModel
+import com.example.metaforge.presentation.screens.draft.DraftSetupViewModel
 import com.example.metaforge.presentation.screens.draft.DraftViewModel
+import com.example.metaforge.presentation.screens.heroselect.HeroInfoViewModel
 import com.example.metaforge.presentation.screens.heroselect.HeroSelectViewModel
+import com.example.metaforge.presentation.screens.settings.SettingsViewModel
 import com.example.metaforge.presentation.screens.synergy.SynergyViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -54,9 +57,12 @@ val repositoryModule = module {
 // ==================== VIEWMODEL MODULE ====================
 val viewModelModule = module {
     viewModelOf(::DraftViewModel)
+    viewModelOf(::DraftSetupViewModel)
     viewModelOf(::HeroSelectViewModel)
+    viewModelOf(::HeroInfoViewModel)
     viewModelOf(::SynergyViewModel)
     viewModelOf(::CounterPickViewModel)
+    viewModelOf(::SettingsViewModel)
 }
 
 // ==================== SHARED MODULES ====================
