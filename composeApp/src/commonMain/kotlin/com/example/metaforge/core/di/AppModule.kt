@@ -17,6 +17,7 @@ import com.example.metaforge.presentation.screens.draft.DraftSetupViewModel
 import com.example.metaforge.presentation.screens.draft.DraftViewModel
 import com.example.metaforge.presentation.screens.heroselect.HeroInfoViewModel
 import com.example.metaforge.presentation.screens.heroselect.HeroSelectViewModel
+import com.example.metaforge.presentation.screens.home.HomeViewModel
 import com.example.metaforge.presentation.screens.settings.SettingsViewModel
 import com.example.metaforge.presentation.screens.synergy.SynergyViewModel
 import org.koin.core.context.startKoin
@@ -56,6 +57,7 @@ val repositoryModule = module {
 
 // ==================== VIEWMODEL MODULE ====================
 val viewModelModule = module {
+    viewModelOf(::HomeViewModel)
     viewModelOf(::DraftViewModel)
     viewModelOf(::DraftSetupViewModel)
     viewModelOf(::HeroSelectViewModel)
