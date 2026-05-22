@@ -25,6 +25,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.metaforge.presentation.components.PrimaryButton
+import com.example.metaforge.presentation.components.SecondaryButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,7 +170,7 @@ fun DraftScreen(
                                 InteractiveHeroSlot(hero?.name, hero?.role?.displayName, true, isUnlocked, isUserSlot, { if (isUnlocked) onNavigateToHeroSelect(i, true, false) }) { viewModel.removeHero(i, true, false) }
                             }
                         }
-                        Spacer(Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             for (i in 0 until 5) {
                                 val hero = state.draftState.enemySlots.getOrNull(i)
@@ -178,6 +180,19 @@ fun DraftScreen(
                             }
                         }
                     }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    PrimaryButton(
+                        text = "ANALYZE TEAM SYNERGY",
+                        onClick = onNavigateToSynergy,
+                        enabled = state.draftState.isReadyToAnalyze
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    SecondaryButton(
+                        text = "RESET DRAFT",
+                        onClick = { viewModel.resetDraft() }
+                    )
                 }
             }
         }

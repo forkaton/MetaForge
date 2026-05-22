@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.metaforge.presentation.components.LoadingIndicator
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,80 +52,84 @@ fun HeroInfoScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text(
-                        heroName,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        heroRole,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                "META STATS OVERVIEW",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+        if (uiState.heroName.isEmpty()) {
+            LoadingIndicator(modifier = Modifier.padding(padding))
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                InfoStatCard("Win Rate", uiState.winRate, Color.Green)
-                InfoStatCard("Pick Rate", uiState.pickRate, Color.White)
-                InfoStatCard("Ban Rate", uiState.banRate, MaterialTheme.colorScheme.error)
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Gray)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            uiState.heroName,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            uiState.heroRole,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    "META STATS OVERVIEW",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    InfoStatCard("Win Rate", uiState.winRate, Color.Green)
+                    InfoStatCard("Pick Rate", uiState.pickRate, Color.White)
+                    InfoStatCard("Ban Rate", uiState.banRate, MaterialTheme.colorScheme.error)
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Text(
+                    "MATCHUPS & METAGAME",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                MatchSection(
+                    "Strong Against (Meta Counters)",
+                    uiState.strongAgainst,
+                    Color.Green
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                MatchSection(
+                    "Weak Against (Countered By)",
+                    uiState.weakAgainst,
+                    MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                MatchSection(
+                    "Perfect Synergy (Team Combo)",
+                    uiState.synergizesWith,
+                    MaterialTheme.colorScheme.secondary
+                )
             }
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                "MATCHUPS & METAGAME",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            MatchSection(
-                "Strong Against (Meta Counters)",
-                uiState.strongAgainst,
-                Color.Green
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            MatchSection(
-                "Weak Against (Countered By)",
-                uiState.weakAgainst,
-                MaterialTheme.colorScheme.error
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            MatchSection(
-                "Perfect Synergy (Team Combo)",
-                uiState.synergizesWith,
-                MaterialTheme.colorScheme.secondary
-            )
         }
     }
 }
