@@ -28,9 +28,10 @@ class DraftViewModel(
     val uiState: StateFlow<DraftUiState> = _uiState.asStateFlow()
 
     fun setupDraft(pickPos: Int, isFirst: Boolean, lane: String) {
-        _pickPosition.value = pickPos
-        _preferredLane.value = laneFromString(lane)
         if (!initialized) {
+            // Set initial values from nav args only once; user changes persist after this
+            _pickPosition.value = pickPos
+            _preferredLane.value = laneFromString(lane)
             initialized = true
             viewModelScope.launch {
                 try { draftRepository.setFirstPick(isFirst) } catch (_: Exception) {}

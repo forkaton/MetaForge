@@ -482,17 +482,17 @@ private fun PickSlot(
 ) {
     val slotColor = if (isAlly) MFColors.AllyBlue else MFColors.EnemyRed
     val height = if (compact) 52.dp else 68.dp
+    // User slot always gets accent border/strip regardless of turn
     val borderColor = when {
-        hero != null && isUserSlot -> MFColors.Accent
+        isUserSlot -> MFColors.Accent
         hero != null -> slotColor.copy(alpha = 0.5f)
-        isUserSlot && isActiveSlot -> MFColors.Accent
         isActiveSlot -> slotColor
         else -> MFColors.TextHint.copy(alpha = 0.2f)
     }
     Box(
         modifier = Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(8.dp))
-            .background(if (hero != null || isActiveSlot) slotColor.copy(alpha = 0.08f) else MFColors.BgCard)
-            .border(if (isUserSlot && (isActiveSlot || hero != null)) 2.dp else 1.dp, borderColor, RoundedCornerShape(8.dp))
+            .background(if (isUserSlot || hero != null || isActiveSlot) slotColor.copy(alpha = 0.08f) else MFColors.BgCard)
+            .border(if (isUserSlot) 2.dp else 1.dp, borderColor, RoundedCornerShape(8.dp))
             .then(if (isActiveSlot && hero == null) Modifier.clickable { onClick() } else Modifier),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -508,7 +508,6 @@ private fun PickSlot(
                     Text(hero.role.ifEmpty { hero.lane.displayName }, color = MFColors.TextSecondary, fontSize = 9.sp)
                 }
             }
-            // X button top-right
             Box(
                 modifier = Modifier.align(Alignment.TopEnd).padding(3.dp).size(18.dp)
                     .clip(CircleShape).background(MFColors.BanRed.copy(alpha = 0.9f)).clickable { onRemove() },
@@ -516,7 +515,7 @@ private fun PickSlot(
             ) {
                 Icon(Icons.Default.Close, "Remove", tint = Color.White, modifier = Modifier.size(11.dp))
             }
-            // Accent strip for user slot
+            // Accent strip always visible on user slot
             if (isUserSlot) {
                 Box(modifier = Modifier.align(Alignment.CenterStart).width(3.dp).fillMaxHeight()
                     .background(MFColors.Accent, RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)))
@@ -524,16 +523,21 @@ private fun PickSlot(
         } else {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 when {
-                    isActiveSlot && isUserSlot -> Text("YOUR PICK", color = MFColors.Accent,
+                    // "YOUR PICK" always visible on user slot — dimmer when not yet their turn
+                    isUserSlot && isActiveSlot -> Text("YOUR PICK", color = MFColors.Accent,
                         fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                    isUserSlot -> Text("YOUR PICK", color = MFColors.Accent.copy(alpha = 0.4f),
+                        fontWeight = FontWeight.Medium, fontSize = 10.sp)
                     isActiveSlot -> Text("+", color = slotColor.copy(alpha = 0.8f), fontSize = 20.sp)
                     isAwaitingTurn -> Text("Awaiting Turn", color = MFColors.TextHint, fontSize = 9.sp)
                     else -> Text("—", color = MFColors.TextHint, fontSize = 14.sp)
                 }
             }
-            if (isActiveSlot && isUserSlot) {
+            // Accent strip always visible on user slot
+            if (isUserSlot) {
                 Box(modifier = Modifier.align(Alignment.CenterStart).width(3.dp).fillMaxHeight()
-                    .background(MFColors.Accent, RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)))
+                    .background(MFColors.Accent.copy(alpha = if (isActiveSlot) 1f else 0.4f),
+                        RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp)))
             }
         }
     }
