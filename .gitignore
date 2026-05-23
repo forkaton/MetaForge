@@ -10,6 +10,7 @@ build/
 *.iws
 out/
 
+.claude/
 # Kotlin
 .kotlin/
 
