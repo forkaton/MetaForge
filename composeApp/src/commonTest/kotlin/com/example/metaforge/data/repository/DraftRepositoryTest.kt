@@ -120,14 +120,17 @@ class DraftRepositoryTest {
     }
 
     @Test
-    fun `removing ban does not affect pick wave`() {
+    fun `removing ban returns state to ban phase`() {
         var state = DraftState(isUserFirstPick = true)
         for (i in 0..4) state = state.banAlly(i, testHero).banEnemy(i, testHero)
         state = state.pickAlly(0, testHero)
-        val waveBefore = state.currentPickWave()
+
+        // Hapus salah satu ban
         state = state.removeAllyBan(0)
-        // Pick wave should not change when a ban is removed
-        assertEquals(waveBefore, state.currentPickWave())
+
+        // Karena ada ban yang kosong, sistem harus kembali ke Fase Ban (-1)
+        assertEquals(-1, state.currentPickWave())
+        assertFalse(state.isBanPhaseComplete)
     }
 
     @Test
