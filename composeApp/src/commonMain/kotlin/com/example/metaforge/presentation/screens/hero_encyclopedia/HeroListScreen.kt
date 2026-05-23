@@ -128,7 +128,7 @@ private fun LaneFilterRow(selected: HeroLane?, onSelect: (HeroLane?) -> Unit) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = "Filter by Lane",
-            color = Color.Gray,
+            color = MFColors.TextSecondary,
             fontSize = 11.sp,
             modifier = Modifier.padding(bottom = 6.dp)
         )
@@ -151,7 +151,7 @@ private fun LaneFilterRow(selected: HeroLane?, onSelect: (HeroLane?) -> Unit) {
 @Composable
 private fun LaneChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val bg = if (selected) MFColors.Accent else MFColors.BgCard
-    val textColor = if (selected) Color.Black else Color.White
+    val textColor = if (selected) MFColors.Bg else MFColors.TextPrimary
     val borderColor = if (selected) MFColors.Accent else MFColors.BgElevated
     Box(
         modifier = Modifier
@@ -202,7 +202,7 @@ private fun TierSectionHeader(tier: HeroTier, heroCount: Int) {
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp
             )
-            Text(text = tier.description, color = Color.Gray, fontSize = 11.sp)
+            Text(text = tier.description, color = MFColors.TextSecondary, fontSize = 11.sp)
         }
         Spacer(Modifier.weight(1f))
         Text(text = "$heroCount heroes", color = MFColors.TextHint, fontSize = 11.sp)
@@ -267,7 +267,7 @@ private fun HeroTierCard(hero: HeroMetaEntry, onClick: () -> Unit) {
         Spacer(Modifier.height(4.dp))
         Text(
             text = hero.name,
-            color = Color.White,
+            color = MFColors.TextPrimary,
             fontSize = 10.sp,
             maxLines = 1,
             textAlign = TextAlign.Center,

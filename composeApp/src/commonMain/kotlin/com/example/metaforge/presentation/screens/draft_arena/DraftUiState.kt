@@ -1,6 +1,7 @@
 package com.example.metaforge.presentation.screens.draft_arena
 
 import com.example.metaforge.domain.model.DraftState
+import com.example.metaforge.domain.model.HeroLane
 import com.example.metaforge.domain.model.HeroMetaEntry
 
 data class HeroSuggestion(
@@ -19,8 +20,11 @@ sealed interface DraftUiState {
     data class Ready(
         val draftState: DraftState,
         val isUserTurn: Boolean = false,
-        val suggestions: List<HeroSuggestion> = emptyList(),
-        val turnMessage: String = ""
+        val banSuggestions: List<HeroSuggestion> = emptyList(),
+        val pickSuggestions: List<HeroSuggestion> = emptyList(),
+        val turnMessage: String = "",
+        val currentPickPosition: Int = 1,
+        val currentLane: HeroLane = HeroLane.GOLD_LANE
     ) : DraftUiState
     data class Error(val message: String) : DraftUiState
 }
