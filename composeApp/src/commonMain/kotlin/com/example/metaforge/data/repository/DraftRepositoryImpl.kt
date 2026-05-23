@@ -21,10 +21,18 @@ class DraftRepositoryImpl(
     private val _draftState = MutableStateFlow(DraftState())
     override fun getDraftState(): Flow<DraftState> = _draftState.asStateFlow()
 
-    // ── SSOT: UI always reads from the local DB Flow ──────────────────────────
     override fun getAllHeroes(): Flow<List<Hero>> = database.getAllHeroesFlow()
 
-    // ── Background sync: fetch API → overwrite DB ─────────────────────────────
+    override suspend fun initializeDraft(isUserFirstPick: Boolean) {
+        _draftState.update { current ->
+            if (current.getAllPickedAndBannedHeroes().isEmpty()) {
+                DraftState(isUserFirstPick = isUserFirstPick)
+            } else {
+                current.copy(isUserFirstPick = isUserFirstPick)
+            }
+        }
+    }
+
     override suspend fun syncHeroes() {
         try {
             val response = api.fetchHeroesPositions()
@@ -34,12 +42,12 @@ class DraftRepositoryImpl(
                 heroData?.let { data ->
                     val laneRaw = data.roadsort?.firstOrNull()?.data?.road_sort_title?.lowercase()?.trim() ?: ""
                     val lane = when {
-                        laneRaw.contains("exp")                           -> HeroLane.EXP_LANE
-                        laneRaw.contains("gold")                          -> HeroLane.GOLD_LANE
-                        laneRaw.contains("mid")                           -> HeroLane.MID_LANE
+                        laneRaw.contains("exp")                                -> HeroLane.EXP_LANE
+                        laneRaw.contains("gold")                               -> HeroLane.GOLD_LANE
+                        laneRaw.contains("mid")                                -> HeroLane.MID_LANE
                         laneRaw.contains("jungle") || laneRaw.contains("jng") -> HeroLane.JUNGLE
                         laneRaw.contains("roam") || laneRaw.contains("support") -> HeroLane.ROAM
-                        else                                              -> HeroLane.MID_LANE
+                        else                                                   -> HeroLane.MID_LANE
                     }
                     Hero(
                         id       = heroId,
@@ -57,31 +65,34 @@ class DraftRepositoryImpl(
                 println("[Sync] Saved ${heroes.size} heroes to DB")
             }
         } catch (e: Exception) {
-            // Silently fail — UI continues to show cached data
             println("[Sync] Failed: ${e.message}")
-            throw e   // re-throw so caller can detect offline state
+            throw e
         }
     }
 
     override suspend fun pickHero(slotIndex: Int, isAlly: Boolean, hero: Hero?) {
         _draftState.update { state ->
-            if (isAlly) state.copy(
-                allySlots = state.allySlots.toMutableList().apply { if (slotIndex in indices) this[slotIndex] = hero }
-            ) else state.copy(
-                enemySlots = state.enemySlots.toMutableList().apply { if (slotIndex in indices) this[slotIndex] = hero }
-            )
+            when {
+                hero == null && isAlly  -> state.removeAlly(slotIndex)
+                hero == null            -> state.removeEnemy(slotIndex)
+                isAlly                  -> state.pickAlly(slotIndex, hero)
+                else                    -> state.pickEnemy(slotIndex, hero)
+            }
         }
     }
 
     override suspend fun banHero(slotIndex: Int, isAlly: Boolean, hero: Hero?) {
         _draftState.update { state ->
-            if (isAlly) state.copy(
-                allyBans = state.allyBans.toMutableList().apply { if (slotIndex in indices) this[slotIndex] = hero }
-            ) else state.copy(
-                enemyBans = state.enemyBans.toMutableList().apply { if (slotIndex in indices) this[slotIndex] = hero }
-            )
+            when {
+                hero == null && isAlly  -> state.removeAllyBan(slotIndex)
+                hero == null            -> state.removeEnemyBan(slotIndex)
+                isAlly                  -> state.banAlly(slotIndex, hero)
+                else                    -> state.banEnemy(slotIndex, hero)
+            }
         }
     }
 
-    override suspend fun clearDraft() { _draftState.value = DraftState() }
+    override suspend fun clearDraft() {
+        _draftState.update { current -> current.resetAll() }
+    }
 }

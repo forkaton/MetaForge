@@ -22,11 +22,10 @@ class DraftViewModel(
     private var isFirstPick = true
     private var preferredLane: HeroLane = HeroLane.GOLD_LANE
     private var allHeroMeta: List<HeroMetaEntry> = emptyList()
+    private var initialized = false
 
     private val _uiState = MutableStateFlow<DraftUiState>(DraftUiState.Loading)
     val uiState: StateFlow<DraftUiState> = _uiState.asStateFlow()
-
-    init { loadAndObserve() }
 
     fun setupDraft(pickPos: Int, isFirst: Boolean, lane: String) {
         pickPosition = pickPos
@@ -39,6 +38,15 @@ class DraftViewModel(
             "ROAM"      -> HeroLane.ROAM
             else        -> HeroLane.GOLD_LANE
         }
+        if (!initialized) {
+            initialized = true
+            viewModelScope.launch {
+                try {
+                    draftRepository.initializeDraft(isFirstPick)
+                } catch (_: Exception) {}
+            }
+            loadAndObserve()
+        }
     }
 
     private fun loadAndObserve() {
@@ -46,13 +54,13 @@ class DraftViewModel(
             try {
                 allHeroMeta = heroMetaService.getAllHeroes()
                 draftRepository.getDraftState().collect { state ->
-                    val isTurn = isUserTurn(state)
-                    val suggestions = if (isTurn) computeSuggestions(state) else emptyList()
+                    val isTurn = state.isAllyTurn() && !state.isComplete
+                    val suggestions = if (isTurn || state.isComplete) computeSuggestions(state) else emptyList()
                     _uiState.value = DraftUiState.Ready(
-                        draftState = state,
-                        isUserTurn = isTurn,
-                        suggestions = suggestions,
-                        turnMessage = state.getTurnMessage(isFirstPick)
+                        draftState   = state,
+                        isUserTurn   = isTurn,
+                        suggestions  = suggestions,
+                        turnMessage  = state.getTurnMessage()
                     )
                 }
             } catch (e: Exception) {
@@ -61,28 +69,20 @@ class DraftViewModel(
         }
     }
 
-    private fun isUserTurn(state: DraftState): Boolean {
-        val idx = pickPosition - 1
-        return state.isPickUnlocked(idx, true, isFirstPick) &&
-               state.allySlots.getOrNull(idx) == null
-    }
-
     private fun computeSuggestions(state: DraftState): List<HeroSuggestion> {
         if (allHeroMeta.isEmpty()) return emptyList()
 
-        val allPickedNames = (state.allySlots + state.enemySlots).filterNotNull().map { it.name }.toSet()
-        val allBannedNames = (state.allyBans + state.enemyBans).filterNotNull().map { it.name }.toSet()
+        val allPickedNames   = (state.allySlots + state.enemySlots).filterNotNull().map { it.name }.toSet()
+        val allBannedNames   = (state.allyBans + state.enemyBans).filterNotNull().map { it.name }.toSet()
         val unavailableNames = allPickedNames + allBannedNames
 
         val allyPickedNames  = state.allySlots.filterNotNull().map { it.name }.toSet()
         val enemyPickedNames = state.enemySlots.filterNotNull().map { it.name }.toSet()
 
-        val candidates = allHeroMeta.filter {
-            it.name !in unavailableNames && it.lanes.contains(preferredLane)
-        }.ifEmpty {
-            // Fallback: any hero in preferred lane regardless of availability filter
-            allHeroMeta.filter { it.name !in unavailableNames && it.lanes.isNotEmpty() }
-        }
+        // Filter by preferred lane first; if none match, use all available
+        val candidates = allHeroMeta
+            .filter { it.name !in unavailableNames && it.lanes.contains(preferredLane) }
+            .ifEmpty { allHeroMeta.filter { it.name !in unavailableNames } }
 
         return candidates.map { hero ->
             val tierScore = tierScore(hero.tier)
@@ -96,23 +96,32 @@ class DraftViewModel(
             val synergyNames = hero.synergies.map { it.name }.toSet()
             val synergyBonus = allyPickedNames.count { it in synergyNames } * 10
 
-            val total = tierScore + counterBonus - weaknessPenalty + synergyBonus
+            val laneBonus = if (hero.lanes.contains(preferredLane)) 10 else 0
+            val total = tierScore + counterBonus - weaknessPenalty + synergyBonus + laneBonus
 
             val reasons = buildList {
                 val countered = enemyPickedNames.filter { it in strongAgainstNames }
                 if (countered.isNotEmpty()) add("Counters: ${countered.take(2).joinToString(", ")}")
                 val synAlly = allyPickedNames.filter { it in synergyNames }
                 if (synAlly.isNotEmpty()) add("Synergy with ${synAlly.take(2).joinToString(", ")}")
-                if (isEmpty()) add("${hero.tier.label} tier – best pick for ${preferredLane.displayName}")
+                if (hero.lanes.contains(preferredLane)) add("Fits ${preferredLane.displayName}")
+                if (isEmpty()) add("${hero.tier.label} tier pick for ${preferredLane.displayName}")
             }
 
             val warnings = buildList {
-                val threats = enemyPickedNames.filter { it in weakAgainstNames }
-                if (threats.isNotEmpty()) add("Enemy has: ${threats.take(2).joinToString(", ")}")
-                val openCounters = hero.weakAgainst
-                    .filter { it.name !in unavailableNames && it.name !in allyPickedNames }
+                val alreadyPicked = hero.weakAgainst
+                    .filter { it.name in enemyPickedNames }
+                if (alreadyPicked.isNotEmpty()) add("Enemy picked: ${alreadyPicked.take(2).joinToString(", ") { it.name }}")
+
+                val pickableCounters = hero.weakAgainst
+                    .filter { it.name !in unavailableNames }
                     .take(2)
-                if (openCounters.isNotEmpty()) add("Open counters: ${openCounters.joinToString(", ") { it.name }}")
+                if (pickableCounters.isNotEmpty()) add("Open counters: ${pickableCounters.joinToString(", ") { it.name }}")
+
+                val bannedCounters = hero.weakAgainst
+                    .filter { it.name in allBannedNames }
+                    .take(2)
+                if (bannedCounters.isNotEmpty()) add("Counters banned: ${bannedCounters.joinToString(", ") { it.name }}")
             }
 
             HeroSuggestion(hero, total, tierScore, counterBonus, weaknessPenalty, synergyBonus, reasons, warnings)
@@ -129,5 +138,9 @@ class DraftViewModel(
             if (isBan) draftRepository.banHero(slotIndex, isAlly, null)
             else draftRepository.pickHero(slotIndex, isAlly, null)
         }
+    }
+
+    fun resetDraft() {
+        viewModelScope.launch { draftRepository.clearDraft() }
     }
 }

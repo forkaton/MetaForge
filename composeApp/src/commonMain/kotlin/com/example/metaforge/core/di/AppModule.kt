@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import com.example.metaforge.core.network.HttpClientFactory
 import com.example.metaforge.core.util.DatabaseDriverFactory
 import com.example.metaforge.data.local.HeroMetaService
+import com.example.metaforge.data.remote.HeroMetaFetcher
 import com.example.metaforge.data.local.MetaForgeDatabaseWrapper
 import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.data.local.datastore.ThemePreferences
@@ -35,7 +36,11 @@ val appModule = module {
     single { DraftPreferences(get<DataStore<Preferences>>()) }
     single { ThemePreferences(get<DataStore<Preferences>>()) }
 
-    // Hero meta service (loads hero_meta.json asset, caches in memory)
+    // Fetches hero meta JSON from GitHub, caches in DataStore for offline use
+    single { HeroMetaFetcher(get(), get<DataStore<Preferences>>()) }
+    single<suspend () -> String> { { get<HeroMetaFetcher>().fetchJson() } }
+
+    // Hero meta service — caches parsed heroes in memory for the session
     single { HeroMetaService(get<suspend () -> String>()) }
 
     // Repository (single = stateful draft state)
