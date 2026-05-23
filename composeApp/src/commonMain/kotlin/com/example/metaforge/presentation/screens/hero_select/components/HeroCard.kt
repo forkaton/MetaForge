@@ -1,4 +1,4 @@
-package com.example.metaforge.presentation.screens.heroselect.components
+package com.example.metaforge.presentation.screens.hero_select.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

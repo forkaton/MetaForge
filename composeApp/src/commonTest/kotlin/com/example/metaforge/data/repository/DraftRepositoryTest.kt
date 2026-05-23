@@ -1,7 +1,7 @@
 package com.example.metaforge.data.repository
 
 import com.example.metaforge.domain.model.Hero
-import com.example.metaforge.domain.model.HeroRole
+import com.example.metaforge.domain.model.HeroLane
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -17,7 +17,7 @@ class DraftRepositoryTest {
     private val testHero = Hero(
         id = 11,
         name = "Fanny",
-        role = HeroRole.ASSASSIN,
+        lane = HeroLane.JUNGLE,
         imageUrl = "",
         specialty = "Mobility"
     )

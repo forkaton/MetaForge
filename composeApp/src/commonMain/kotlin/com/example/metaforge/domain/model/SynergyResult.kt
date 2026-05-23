@@ -10,9 +10,3 @@ data class SynergyResult(
     val winCondition: String
 )
 
-data class HeroRecommendation(
-    val name: String,
-    val role: String,
-    val reason: String,
-    val counterScore: Int
-)
