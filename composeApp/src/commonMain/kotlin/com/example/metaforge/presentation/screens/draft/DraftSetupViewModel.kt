@@ -1,7 +1,7 @@
 package com.example.metaforge.presentation.screens.draft
 
 import androidx.lifecycle.ViewModel
-import com.example.metaforge.domain.model.HeroRole
+import com.example.metaforge.domain.model.HeroLane
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +22,6 @@ class DraftSetupViewModel : ViewModel() {
     fun setPickPosition(position: Int) =
         _uiState.update { it.copy(pickPosition = position) }
 
-    fun setPreferredRole(role: HeroRole) =
+    fun setPreferredRole(role: HeroLane) =
         _uiState.update { it.copy(preferredRole = role) }
 }

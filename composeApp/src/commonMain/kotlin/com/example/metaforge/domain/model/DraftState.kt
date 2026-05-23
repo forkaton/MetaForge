@@ -80,7 +80,14 @@ data class DraftState(
         newBans[index] = null
         return copy(enemyBans = newBans)
     }
-
+    fun getTurnMessage(isUserFirstPick: Boolean): String {
+        return when {
+            !isBanPhaseComplete -> "Ban Phase: Please select heroes to ban."
+            allyCount == 5 && enemyCount == 5 -> "Draft Complete! Ready for battle."
+            else -> "Pick Phase: Please select your heroes."
+        }
+    }
     fun getAllPickedHeroes(): List<Hero> =
         (allySlots + enemySlots).filterNotNull()
+
 }
