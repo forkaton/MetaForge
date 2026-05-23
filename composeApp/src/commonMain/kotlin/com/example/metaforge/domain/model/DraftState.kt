@@ -4,83 +4,83 @@ data class DraftState(
     val allySlots: List<Hero?> = List(5) { null },
     val enemySlots: List<Hero?> = List(5) { null },
     val allyBans: List<Hero?> = List(5) { null },
-    val enemyBans: List<Hero?> = List(5) { null }
+    val enemyBans: List<Hero?> = List(5) { null },
+    val currentTurn: Int = 0 // 0-19 untuk urutan ban/pick
 ) {
     val isReadyToAnalyze: Boolean
         get() = allySlots.any { it != null } && enemySlots.any { it != null }
 
-    fun pickAlly(index: Int, hero: Hero?) = copy(allySlots = allySlots.toMutableList().apply { set(index, hero) })
-    fun pickEnemy(index: Int, hero: Hero?) = copy(enemySlots = enemySlots.toMutableList().apply { set(index, hero) })
-    fun banAlly(index: Int, hero: Hero?) = copy(allyBans = allyBans.toMutableList().apply { set(index, hero) })
-    fun banEnemy(index: Int, hero: Hero?) = copy(enemyBans = enemyBans.toMutableList().apply { set(index, hero) })
+    val isBanPhaseComplete: Boolean
+        get() = allyBans.count { it != null } >= 5 &&
+                enemyBans.count { it != null } >= 5
 
-    fun getAllPickedHeroes(): List<Hero> = (allySlots + enemySlots + allyBans + enemyBans).filterNotNull()
+    val allyCount: Int get() = allySlots.count { it != null }
+    val enemyCount: Int get() = enemySlots.count { it != null }
 
-    fun isPickUnlocked(slotIndex: Int, isAllySlot: Boolean, isFirstPick: Boolean): Boolean {
-        val allBansFilled = allyBans.all { it != null } && enemyBans.all { it != null }
-        if (!allBansFilled) return false
-
-        val blueSlots = if (isFirstPick) allySlots else enemySlots
-        val redSlots = if (isFirstPick) enemySlots else allySlots
-
-        val b1 = blueSlots.getOrNull(0) != null
-        val b2 = blueSlots.getOrNull(1) != null
-        val b3 = blueSlots.getOrNull(2) != null
-        val b4 = blueSlots.getOrNull(3) != null
-        val b5 = blueSlots.getOrNull(4) != null
-
-        val r1 = redSlots.getOrNull(0) != null
-        val r2 = redSlots.getOrNull(1) != null
-        val r3 = redSlots.getOrNull(2) != null
-        val r4 = redSlots.getOrNull(3) != null
-
-        val isTargetBlue = if (isFirstPick) isAllySlot else !isAllySlot
-
-        return if (isTargetBlue) {
-            when (slotIndex) {
-                0 -> true
-                1, 2 -> b1 && r1 && r2
-                3, 4 -> b1 && r1 && r2 && b2 && b3 && r3 && r4
-                else -> false
-            }
+    // Cek apakah slot pick sudah bisa diisi
+    // Pick hanya bisa setelah ban phase selesai
+    fun isPickUnlocked(index: Int, isAlly: Boolean, isUserFirstPick: Boolean): Boolean {
+        if (!isBanPhaseComplete) return false
+        return if (isAlly) {
+            index <= allyCount
         } else {
-            when (slotIndex) {
-                0, 1 -> b1
-                2, 3 -> b1 && r1 && r2 && b2 && b3
-                4 -> b1 && r1 && r2 && b2 && b3 && r3 && r4 && b4 && b5
-                else -> false
-            }
+            index <= enemyCount
         }
     }
 
-    // Fungsi baru untuk memandu User di fase manakah mereka berada
-    fun getTurnMessage(isFirstPick: Boolean): String {
-        val allBansFilled = allyBans.all { it != null } && enemyBans.all { it != null }
-        if (!allBansFilled) return "BAN PHASE: FILL ALL 10 BANS"
+    fun getAllPickedAndBannedHeroes(): List<Hero> =
+        (allySlots + enemySlots + allyBans + enemyBans).filterNotNull()
 
-        val blueSlots = if (isFirstPick) allySlots else enemySlots
-        val redSlots = if (isFirstPick) enemySlots else allySlots
-
-        val b1 = blueSlots.getOrNull(0) != null
-        val b2 = blueSlots.getOrNull(1) != null
-        val b3 = blueSlots.getOrNull(2) != null
-        val b4 = blueSlots.getOrNull(3) != null
-        val b5 = blueSlots.getOrNull(4) != null
-
-        val r1 = redSlots.getOrNull(0) != null
-        val r2 = redSlots.getOrNull(1) != null
-        val r3 = redSlots.getOrNull(2) != null
-        val r4 = redSlots.getOrNull(3) != null
-        val r5 = redSlots.getOrNull(4) != null
-
-        return when {
-            !b1 -> "PICK PHASE: BLUE TEAM'S TURN (1 PICK)"
-            !r1 || !r2 -> "PICK PHASE: RED TEAM'S TURN (2 PICKS)"
-            !b2 || !b3 -> "PICK PHASE: BLUE TEAM'S TURN (2 PICKS)"
-            !r3 || !r4 -> "PICK PHASE: RED TEAM'S TURN (2 PICKS)"
-            !b4 || !b5 -> "PICK PHASE: BLUE TEAM'S TURN (2 PICKS)"
-            !r5 -> "PICK PHASE: RED TEAM'S TURN (LAST PICK)"
-            else -> "DRAFT COMPLETE!"
-        }
+    // Pick functions
+    fun pickAlly(index: Int, hero: Hero): DraftState {
+        val newSlots = allySlots.toMutableList()
+        newSlots[index] = hero
+        return copy(allySlots = newSlots)
     }
+
+    fun pickEnemy(index: Int, hero: Hero): DraftState {
+        val newSlots = enemySlots.toMutableList()
+        newSlots[index] = hero
+        return copy(enemySlots = newSlots)
+    }
+
+    fun removeAlly(index: Int): DraftState {
+        val newSlots = allySlots.toMutableList()
+        newSlots[index] = null
+        return copy(allySlots = newSlots)
+    }
+
+    fun removeEnemy(index: Int): DraftState {
+        val newSlots = enemySlots.toMutableList()
+        newSlots[index] = null
+        return copy(enemySlots = newSlots)
+    }
+
+    // Ban functions
+    fun banAlly(index: Int, hero: Hero): DraftState {
+        val newBans = allyBans.toMutableList()
+        newBans[index] = hero
+        return copy(allyBans = newBans)
+    }
+
+    fun banEnemy(index: Int, hero: Hero): DraftState {
+        val newBans = enemyBans.toMutableList()
+        newBans[index] = hero
+        return copy(enemyBans = newBans)
+    }
+
+    fun removeAllyBan(index: Int): DraftState {
+        val newBans = allyBans.toMutableList()
+        newBans[index] = null
+        return copy(allyBans = newBans)
+    }
+
+    fun removeEnemyBan(index: Int): DraftState {
+        val newBans = enemyBans.toMutableList()
+        newBans[index] = null
+        return copy(enemyBans = newBans)
+    }
+
+    fun getAllPickedHeroes(): List<Hero> =
+        (allySlots + enemySlots).filterNotNull()
 }

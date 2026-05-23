@@ -17,4 +17,5 @@ sealed interface Route {
     @Serializable data class HeroInfo(val heroId: Int, val heroName: String, val heroRole: String) : Route
     @Serializable data object CounterPick : Route
     @Serializable data object Synergy : Route
+    @Serializable data object Settings : Route
 }
