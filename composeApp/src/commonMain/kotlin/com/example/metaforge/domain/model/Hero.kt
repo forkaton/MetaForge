@@ -1,9 +1,11 @@
 package com.example.metaforge.domain.model
 
 data class Hero(
-    val id: Int,
+    val id: Int = 0,
     val name: String,
-    val role: HeroRole,
+    val lane: HeroLane,
+    val role: String = "",
     val imageUrl: String = "",
+    val iconUrl: String = "",
     val specialty: String = ""
 )

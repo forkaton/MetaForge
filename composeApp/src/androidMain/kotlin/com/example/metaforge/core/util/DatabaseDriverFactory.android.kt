@@ -18,7 +18,7 @@ actual class DatabaseDriverFactory(
         return AndroidSqliteDriver(
             schema = MetaForgeDatabase.Schema,
             context = context,
-            name = "noteai.db"
+            name = "metaforge.db"
         )
     }
 }

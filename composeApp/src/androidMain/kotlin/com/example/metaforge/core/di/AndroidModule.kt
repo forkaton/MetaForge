@@ -1,18 +1,28 @@
 package com.example.metaforge.core.di
 
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+import com.example.metaforge.core.connectivity.AndroidConnectivityObserver
+import com.example.metaforge.core.connectivity.ConnectivityObserver
 import com.example.metaforge.core.util.DatabaseDriverFactory
-import com.example.metaforge.data.local.datastore.DataStoreFactory
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
-/**
- * Android-specific Koin module.
- *
- * Menyediakan dependencies yang membutuhkan `Context`:
- * - DatabaseDriverFactory: untuk SQLDelight driver
- * - DataStoreFactory     : untuk lokasi file preferences
- */
 val androidModule = module {
+    // Database driver
     single { DatabaseDriverFactory(androidContext()) }
-    single { DataStoreFactory(androidContext()) }
+
+    // DataStore
+    single<DataStore<Preferences>> {
+        val context = androidContext()
+        @Suppress("DEPRECATION")
+        context.dataStore
+    }
+
+    // Connectivity observer
+    single<ConnectivityObserver> { AndroidConnectivityObserver(androidContext()) }
 }
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "metaforge_preferences")

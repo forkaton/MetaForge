@@ -20,6 +20,11 @@ val localProperties = Properties().apply {
 }
 
 kotlin {
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -42,6 +47,8 @@ kotlin {
         commonMain.dependencies {
             // Compose
             implementation(compose.runtime)
+            implementation("io.coil-kt.coil3:coil-compose:3.0.0-alpha10")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.0.0-alpha10")
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
@@ -91,11 +98,12 @@ kotlin {
             implementation(libs.turbine)
         }
         
-        androidMain.dependencies {
+         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.sqldelight.android.driver)
+            implementation(libs.datastore.preferences.android)
         }
         
         iosMain.dependencies {

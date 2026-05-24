@@ -14,7 +14,7 @@ actual class DatabaseDriverFactory {
     actual fun createDriver(): SqlDriver {
         return NativeSqliteDriver(
             schema = MetaForgeDatabase.Schema,
-            name = "noteai.db"
+            name = "metaforge.db"
         )
     }
 }

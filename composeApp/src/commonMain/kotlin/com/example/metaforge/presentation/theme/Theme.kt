@@ -2,38 +2,49 @@ package com.example.metaforge.presentation.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.example.metaforge.ui.theme.MFColors
+import com.example.metaforge.ui.theme.MFThemeState
 
-// Palet Profesional Esports
-val MetaForgeBg = Color(0xFF08223a)         // Background Utama (Sangat Gelap)
-val MetaForgeSurface = Color(0xFF092b49)    // Latar Kartu/Panel
-val MetaForgeSurfaceVariant = Color(0xFF0e3a61) // Panel Aktif / Hover
-val MetaForgeSecondary = Color(0xFF194e7d)  // Border / Aksen Minor
-val MetaForgePrimary = Color(0xFF2b6599)    // Tombol Utama / Aksen Mayor
+private val DarkColorScheme = darkColorScheme(
+    background        = Color(0xFF08223A),
+    surface           = Color(0xFF092B49),
+    surfaceVariant    = Color(0xFF0E3A61),
+    primary           = Color(0xFF4EADDF),
+    secondary         = Color(0xFF2B6599),
+    error             = Color(0xFFE84343),
+    onBackground      = Color(0xFFE8F4FD),
+    onSurface         = Color(0xFFE8F4FD),
+    onPrimary         = Color(0xFF08223A),
+    onSecondary       = Color.White,
+    primaryContainer  = Color(0xFF0E3A61),
+    onPrimaryContainer= Color(0xFF4EADDF)
+)
 
-// Warna Fungsional
-val MetaForgeRed = Color(0xFFE53935)   // Enemy / Ban / Warning
-val MetaForgeGreen = Color(0xFF43A047) // Synergy / Good Matchup
-val MetaForgeGold = Color(0xFFFFD700)  // Premium / Tier SS
-
-private val MetaForgeColorScheme = darkColorScheme(
-    background = MetaForgeBg,
-    surface = MetaForgeSurface,
-    surfaceVariant = MetaForgeSurfaceVariant,
-    primary = MetaForgePrimary,
-    secondary = MetaForgeSecondary,
-    error = MetaForgeRed,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    onPrimary = Color.White,
-    onSecondary = Color.White
+private val LightColorScheme = lightColorScheme(
+    background        = Color(0xFFEFF8FF),
+    surface           = Color(0xFFDCF0FF),
+    surfaceVariant    = Color(0xFFC4E5FA),
+    primary           = Color(0xFF1A6FA8),
+    secondary         = Color(0xFF194E7D),
+    error             = Color(0xFFE84343),
+    onBackground      = Color(0xFF08223A),
+    onSurface         = Color(0xFF08223A),
+    onPrimary         = Color.White,
+    onSecondary       = Color.White,
+    primaryContainer  = Color(0xFFC4E5FA),
+    onPrimaryContainer= Color(0xFF08223A)
 )
 
 @Composable
-fun MetaForgeTheme(content: @Composable () -> Unit) {
+fun MetaForgeTheme(
+    isDark: Boolean = MFThemeState.isDark,
+    content: @Composable () -> Unit
+) {
     MaterialTheme(
-        colorScheme = MetaForgeColorScheme,
+        colorScheme = if (isDark) DarkColorScheme else LightColorScheme,
         content = content
     )
 }

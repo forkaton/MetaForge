@@ -1,80 +1,68 @@
 package com.example.metaforge.core.di
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.example.metaforge.core.network.HttpClientFactory
 import com.example.metaforge.core.util.DatabaseDriverFactory
-import com.example.metaforge.data.local.MetaForgeDatabase
-import com.example.metaforge.data.local.datastore.DataStoreFactory
+import com.example.metaforge.data.local.HeroMetaService
+import com.example.metaforge.data.remote.HeroMetaFetcher
+import com.example.metaforge.data.local.MetaForgeDatabaseWrapper
 import com.example.metaforge.data.local.datastore.DraftPreferences
+import com.example.metaforge.data.local.datastore.ThemePreferences
 import com.example.metaforge.data.local.datastore.UserPreferences
-import com.example.metaforge.data.local.datastore.create
-import com.example.metaforge.data.remote.api.GeminiService
-import com.example.metaforge.data.repository.AIRepositoryImpl
+import com.example.metaforge.data.remote.api.MLBBApiService
 import com.example.metaforge.data.repository.DraftRepositoryImpl
-import com.example.metaforge.domain.repository.AIRepository
 import com.example.metaforge.domain.repository.DraftRepository
 import com.example.metaforge.presentation.screens.counterpick.CounterPickViewModel
-import com.example.metaforge.presentation.screens.draft.DraftViewModel
-import com.example.metaforge.presentation.screens.heroselect.HeroSelectViewModel
-import com.example.metaforge.presentation.screens.synergy.SynergyViewModel
+import com.example.metaforge.presentation.screens.draft_arena.DraftViewModel
+import com.example.metaforge.presentation.screens.draft_setup.DraftSetupViewModel
+import com.example.metaforge.presentation.screens.hero_encyclopedia.TierListViewModel
+import com.example.metaforge.presentation.screens.hero_select.HeroSelectViewModel
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
-import org.koin.core.module.dsl.singleOf
-import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.KoinAppDeclaration
-import org.koin.dsl.bind
 import org.koin.dsl.module
 
-// ==================== NETWORK MODULE ====================
-val networkModule = module {
-    single { HttpClientFactory.create(enableLogging = true) }
-    singleOf(::GeminiService)
-}
+val appModule = module {
+    // Network
+    single { HttpClientFactory.create() }
+    single { MLBBApiService(get()) }
 
-// ==================== DATABASE MODULE ====================
-val databaseModule = module {
-    single {
-        val driverFactory: DatabaseDriverFactory = get()
-        MetaForgeDatabase(driverFactory.createDriver())
+    // Database
+    single { MetaForgeDatabaseWrapper(get<DatabaseDriverFactory>().createDriver()) }
+
+    // DataStore preferences
+    single { UserPreferences(get<DataStore<Preferences>>()) }
+    single { DraftPreferences(get<DataStore<Preferences>>()) }
+    single { ThemePreferences(get<DataStore<Preferences>>()) }
+
+    // Fetches hero meta JSON from GitHub, caches in DataStore for offline use
+    single { HeroMetaFetcher(get(), get<DataStore<Preferences>>()) }
+    single<suspend () -> String> { { get<HeroMetaFetcher>().fetchJson() } }
+
+    // Hero meta service — caches parsed heroes in memory for the session
+    single { HeroMetaService(get<suspend () -> String>()) }
+
+    // Repository (single = stateful draft state)
+    single<DraftRepository> {
+        DraftRepositoryImpl(
+            prefs    = getOrNull<DraftPreferences>(),
+            database = get(),
+            api      = get()
+        )
     }
+
+    // ViewModels
+    factory { DraftSetupViewModel() }
+    factory { DraftViewModel(get<DraftRepository>(), get<HeroMetaService>()) }
+    factory { HeroSelectViewModel(get<DraftRepository>(), get<HeroMetaService>()) }
+    factory { CounterPickViewModel(get<DraftRepository>()) }
+    factory { TierListViewModel(get<suspend () -> String>()) }
 }
 
-// ==================== PREFERENCES MODULE ====================
-val preferencesModule = module {
-    single { get<DataStoreFactory>().create() }
-    single { UserPreferences(get()) }
-    single { DraftPreferences(get()) }
-}
-
-// ==================== REPOSITORY MODULE ====================
-val repositoryModule = module {
-    singleOf(::AIRepositoryImpl) bind AIRepository::class
-    single<DraftRepository> { DraftRepositoryImpl(get()) }
-}
-
-// ==================== VIEWMODEL MODULE ====================
-val viewModelModule = module {
-    viewModelOf(::DraftViewModel)
-    viewModelOf(::HeroSelectViewModel)
-    viewModelOf(::SynergyViewModel)
-    viewModelOf(::CounterPickViewModel)
-}
-
-// ==================== SHARED MODULES ====================
-val sharedModules = listOf(
-    networkModule,
-    databaseModule,
-    preferencesModule,
-    repositoryModule,
-    viewModelModule
-)
-
-// ==================== INIT FUNCTION ====================
-fun initKoin(
-    platformModules: List<Module> = emptyList(),
-    config: KoinAppDeclaration? = null
-) {
+fun initKoin(platformModules: List<Module>, appDeclaration: KoinAppDeclaration = {}) {
     startKoin {
-        config?.invoke(this)
-        modules(platformModules + sharedModules)
+        appDeclaration()
+        modules(appModule, *platformModules.toTypedArray())
     }
 }
