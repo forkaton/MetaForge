@@ -23,21 +23,26 @@ class DraftViewModel(
     private val _preferredLane = MutableStateFlow(HeroLane.GOLD_LANE)
     private var allHeroMeta: List<HeroMetaEntry> = emptyList()
     private var initialized = false
+    private var isUserFirstPick = true
 
     private val _uiState = MutableStateFlow<DraftUiState>(DraftUiState.Loading)
     val uiState: StateFlow<DraftUiState> = _uiState.asStateFlow()
 
     fun setupDraft(pickPos: Int, isFirst: Boolean, lane: String) {
-        if (!initialized) {
-            // Set initial values from nav args only once; user changes persist after this
-            _pickPosition.value = pickPos
-            _preferredLane.value = laneFromString(lane)
-            initialized = true
-            viewModelScope.launch {
-                try { draftRepository.setFirstPick(isFirst) } catch (_: Exception) {}
-            }
-            loadAndObserve()
-        }
+        if (initialized) return
+        // Set initial values from nav args only once; user changes persist after this
+        initialized = true
+        isUserFirstPick = isFirst
+        _pickPosition.value = pickPos
+        _preferredLane.value = laneFromString(lane)
+        loadAndObserve()
+    }
+
+    /** Re-runs the load/observe pipeline; used by the Error state's retry action. */
+    fun retry() {
+        if (!initialized) return
+        _uiState.value = DraftUiState.Loading
+        loadAndObserve()
     }
 
     fun updateLane(lane: HeroLane) { _preferredLane.value = lane }
@@ -46,6 +51,9 @@ class DraftViewModel(
     private fun loadAndObserve() {
         viewModelScope.launch {
             try {
+                // Apply first-pick BEFORE collecting so the first combine emission is correct
+                // (otherwise second-pick users briefly see a Blue-first board).
+                draftRepository.setFirstPick(isUserFirstPick)
                 allHeroMeta = heroMetaService.getAllHeroes()
                 combine(draftRepository.getDraftState(), _pickPosition, _preferredLane) { s, p, l ->
                     Triple(s, p, l)

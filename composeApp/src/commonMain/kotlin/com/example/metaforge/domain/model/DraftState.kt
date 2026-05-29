@@ -52,8 +52,9 @@ data class DraftState(
     }
 
     fun activePickSlots(): List<Pair<Boolean, Int>> {
+        val waves = pickWaves(isUserFirstPick)
         val wave = currentPickWave()
-        return if (wave in 0..5) pickWaves(isUserFirstPick)[wave] else emptyList()
+        return if (wave in waves.indices) waves[wave] else emptyList()
     }
 
     fun isCurrentPickSlot(index: Int, isAlly: Boolean): Boolean =

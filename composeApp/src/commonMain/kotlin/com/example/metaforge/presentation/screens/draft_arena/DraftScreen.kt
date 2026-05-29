@@ -1,6 +1,14 @@
 package com.example.metaforge.presentation.screens.draft_arena
 
-import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,9 +39,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.metaforge.domain.model.Hero
 import com.example.metaforge.domain.model.HeroLane
-import com.example.metaforge.domain.model.HeroTier
 import com.example.metaforge.ui.theme.MFColors
 import org.koin.compose.viewmodel.koinViewModel
+
+/** Material 3 spacing scale used across the draft screen for consistent rhythm. */
+private object DraftDimens {
+    val Screen = 12.dp      // outer screen padding
+    val Section = 8.dp      // gap between major sections
+    val Slot = 6.dp         // gap between pick/ban slots
+    val Inner = 4.dp        // tight inner gaps
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,9 +62,11 @@ fun DraftScreen(
     onNavigateToHeroSelect: (slot: Int, isAlly: Boolean, isBan: Boolean) -> Unit,
     viewModel: DraftViewModel = koinViewModel()
 ) {
-    viewModel.setupDraft(pick, isFirst, lane)
+    // Run setup exactly once, off the composition path (not on every recomposition).
+    LaunchedEffect(pick, isFirst, lane) {
+        viewModel.setupDraft(pick, isFirst, lane)
+    }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var showResetDialog by remember { mutableStateOf(false) }
     var showLaneDialog by remember { mutableStateOf(false) }
     var showPickPosDialog by remember { mutableStateOf(false) }
@@ -158,27 +175,76 @@ fun DraftScreen(
             )
         }
     ) { padding ->
-        when (val state = uiState) {
-            is DraftUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                CircularProgressIndicator(color = MFColors.Accent)
-            }
-            is DraftUiState.Error -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
-                Text(state.message, color = MFColors.EnemyRed, textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(16.dp))
-            }
-            is DraftUiState.Ready -> {
-                val onRemove: (Int, Boolean, Boolean) -> Unit = { idx, isAlly, isBan ->
-                    viewModel.removeHero(idx, isAlly, isBan)
-                }
-                if (isLandscape) {
-                    DraftLandscapeContent(state, onNavigateToHeroSelect, onRemove,
-                        { showLaneDialog = true }, { showPickPosDialog = true }, Modifier.padding(padding))
-                } else {
-                    DraftPortraitContent(state, onNavigateToHeroSelect, onRemove,
-                        { showLaneDialog = true }, { showPickPosDialog = true }, Modifier.padding(padding))
+        // Stable callbacks so child composables don't recompose on lambda identity changes.
+        val onRemove: (Int, Boolean, Boolean) -> Unit =
+            remember(viewModel) { { idx, isAlly, isBan -> viewModel.removeHero(idx, isAlly, isBan) } }
+        val openLaneDialog = remember { { showLaneDialog = true } }
+        val openPickPosDialog = remember { { showPickPosDialog = true } }
+
+        // Smoothly fade between Loading / Error / Ready. Keyed by phase so Ready→Ready
+        // updates (every pick) don't trigger an unnecessary crossfade.
+        val phaseKey = when (uiState) {
+            is DraftUiState.Loading -> 0
+            is DraftUiState.Error -> 1
+            is DraftUiState.Ready -> 2
+        }
+        Crossfade(targetState = phaseKey, label = "draftPhase", modifier = Modifier.padding(padding)) { key ->
+            when (key) {
+                0 -> LoadingView(Modifier.fillMaxSize())
+                1 -> ErrorView(
+                    message = (uiState as? DraftUiState.Error)?.message ?: "Something went wrong",
+                    onRetry = viewModel::retry,
+                    modifier = Modifier.fillMaxSize()
+                )
+                else -> {
+                    val state = uiState as? DraftUiState.Ready ?: return@Crossfade
+                    BoxWithConstraints(Modifier.fillMaxSize()) {
+                        val isLandscape = maxWidth > maxHeight
+                        if (isLandscape) {
+                            DraftLandscapeContent(state, onNavigateToHeroSelect, onRemove,
+                                openLaneDialog, openPickPosDialog)
+                        } else {
+                            DraftPortraitContent(state, onNavigateToHeroSelect, onRemove,
+                                openLaneDialog, openPickPosDialog)
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+// ─── STATE VIEWS ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun LoadingView(modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center) {
+        CircularProgressIndicator(color = MFColors.Accent)
+        Spacer(Modifier.height(DraftDimens.Section))
+        Text("Loading hero meta…", color = MFColors.TextSecondary, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun ErrorView(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier.padding(DraftDimens.Screen),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.ErrorOutline, contentDescription = null,
+            tint = MFColors.EnemyRed, modifier = Modifier.size(48.dp))
+        Spacer(Modifier.height(DraftDimens.Section))
+        Text("Failed to load draft", color = MFColors.TextPrimary,
+            fontWeight = FontWeight.Bold, fontSize = 15.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(DraftDimens.Inner))
+        Text(message, color = MFColors.TextSecondary, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(DraftDimens.Section))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = MFColors.Accent)
+        ) { Text("Retry", fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -195,8 +261,8 @@ private fun DraftConfigRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(MFColors.BgCard)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = DraftDimens.Screen, vertical = DraftDimens.Slot),
+        horizontalArrangement = Arrangement.spacedBy(DraftDimens.Section),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text("Setup:", color = MFColors.TextHint, fontSize = 10.sp)
@@ -213,7 +279,7 @@ private fun ConfigChip(label: String, onClick: () -> Unit) {
             .background(MFColors.BgElevated)
             .border(1.dp, MFColors.Accent.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = DraftDimens.Inner)
     ) {
         Text(label, color = MFColors.Accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     }
@@ -230,7 +296,13 @@ private fun DraftPortraitContent(
     onPickPosClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.fillMaxSize().background(MFColors.Bg).verticalScroll(rememberScrollState())) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MFColors.Bg)
+            .verticalScroll(rememberScrollState())
+            .animateContentSize()  // smooths layout shifts as suggestion panels appear/disappear
+    ) {
         PhaseBanner(state.turnMessage, state.isUserTurn, !state.draftState.isBanPhaseComplete)
         DraftConfigRow(state.currentLane, state.currentPickPosition, onLaneClick, onPickPosClick)
 
@@ -244,22 +316,22 @@ private fun DraftPortraitContent(
             onRemoveEnemyBan = { idx -> onRemoveHero(idx, false, true) }
         )
 
-        // Ban suggestions (only during ban phase)
-        if (state.banSuggestions.isNotEmpty()) {
-            SuggestionsPanel(
-                title = "BAN SUGGESTIONS",
-                subtitle = "High-priority bans for ${state.currentLane.displayName}",
-                suggestions = state.banSuggestions,
-                accentColor = MFColors.BanRed
-            )
-        }
+        // Ban suggestions (only during ban phase) — animated in/out.
+        AnimatedSuggestions(
+            visible = state.banSuggestions.isNotEmpty(),
+            title = "BAN SUGGESTIONS",
+            subtitle = "High-priority bans for ${state.currentLane.displayName}",
+            suggestions = state.banSuggestions,
+            accentColor = MFColors.BanRed
+        )
 
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(DraftDimens.Inner))
         HorizontalDivider(color = MFColors.BgElevated, thickness = 1.dp)
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(DraftDimens.Inner))
 
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = DraftDimens.Section),
+            horizontalArrangement = Arrangement.spacedBy(DraftDimens.Slot)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DraftDimens.Slot)) {
                 TeamLabel("BLUE TEAM", MFColors.AllyBlue, isLeft = true)
                 state.draftState.allySlots.forEachIndexed { idx, hero ->
                     val isActive = state.draftState.isCurrentPickSlot(idx, true)
@@ -272,7 +344,7 @@ private fun DraftPortraitContent(
                         onRemove = { onRemoveHero(idx, true, false) })
                 }
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(DraftDimens.Slot)) {
                 TeamLabel("RED TEAM", MFColors.EnemyRed, isLeft = false)
                 state.draftState.enemySlots.forEachIndexed { idx, hero ->
                     val isActive = state.draftState.isCurrentPickSlot(idx, false)
@@ -284,16 +356,15 @@ private fun DraftPortraitContent(
             }
         }
 
-        // Pick suggestions (only during user's pick wave)
-        if (state.pickSuggestions.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            SuggestionsPanel(
-                title = "PICK SUGGESTIONS",
-                subtitle = "Based on lane, counters & synergy",
-                suggestions = state.pickSuggestions,
-                accentColor = MFColors.Accent
-            )
-        }
+        // Pick suggestions (only during user's pick wave) — animated in/out.
+        AnimatedSuggestions(
+            visible = state.pickSuggestions.isNotEmpty(),
+            title = "PICK SUGGESTIONS",
+            subtitle = "Based on lane, counters & synergy",
+            suggestions = state.pickSuggestions,
+            accentColor = MFColors.Accent,
+            topSpacing = DraftDimens.Section
+        )
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -309,11 +380,12 @@ private fun DraftLandscapeContent(
     onPickPosClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(modifier = modifier.fillMaxSize().background(MFColors.Bg).padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = modifier.fillMaxSize().background(MFColors.Bg)
+        .padding(horizontal = DraftDimens.Section, vertical = DraftDimens.Inner),
+        horizontalArrangement = Arrangement.spacedBy(DraftDimens.Section)) {
 
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            verticalArrangement = Arrangement.spacedBy(DraftDimens.Inner)) {
             TeamLabel("BLUE TEAM", MFColors.AllyBlue, isLeft = true)
             BanRow(state.draftState.allyBans, MFColors.AllyBlue, true,
                 state.draftState.isBanPhaseComplete,
@@ -329,20 +401,26 @@ private fun DraftLandscapeContent(
             }
         }
 
-        Column(modifier = Modifier.weight(1.4f).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.weight(1.4f).verticalScroll(rememberScrollState()).animateContentSize(),
+            verticalArrangement = Arrangement.spacedBy(DraftDimens.Slot)) {
             PhaseBanner(state.turnMessage, state.isUserTurn, !state.draftState.isBanPhaseComplete)
             DraftConfigRow(state.currentLane, state.currentPickPosition, onLaneClick, onPickPosClick)
-            if (state.banSuggestions.isNotEmpty())
-                SuggestionsPanel("BAN SUGGESTIONS", "High-priority bans for ${state.currentLane.displayName}",
-                    state.banSuggestions, MFColors.BanRed)
-            if (state.pickSuggestions.isNotEmpty())
-                SuggestionsPanel("PICK SUGGESTIONS", "Based on lane, counters & synergy",
-                    state.pickSuggestions, MFColors.Accent)
+            AnimatedSuggestions(
+                visible = state.banSuggestions.isNotEmpty(),
+                title = "BAN SUGGESTIONS",
+                subtitle = "High-priority bans for ${state.currentLane.displayName}",
+                suggestions = state.banSuggestions, accentColor = MFColors.BanRed
+            )
+            AnimatedSuggestions(
+                visible = state.pickSuggestions.isNotEmpty(),
+                title = "PICK SUGGESTIONS",
+                subtitle = "Based on lane, counters & synergy",
+                suggestions = state.pickSuggestions, accentColor = MFColors.Accent
+            )
         }
 
         Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            verticalArrangement = Arrangement.spacedBy(DraftDimens.Inner)) {
             TeamLabel("RED TEAM", MFColors.EnemyRed, isLeft = false)
             BanRow(state.draftState.enemyBans, MFColors.EnemyRed, false,
                 state.draftState.isBanPhaseComplete,
@@ -360,10 +438,32 @@ private fun DraftLandscapeContent(
 
 // ─── COMPONENTS ──────────────────────────────────────────────────────────────
 
+/** Wraps [SuggestionsPanel] in an AnimatedVisibility so panels slide/fade in and out. */
+@Composable
+private fun AnimatedSuggestions(
+    visible: Boolean,
+    title: String,
+    subtitle: String,
+    suggestions: List<HeroSuggestion>,
+    accentColor: Color,
+    topSpacing: androidx.compose.ui.unit.Dp = 0.dp
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(220)) + expandVertically(tween(220)),
+        exit = fadeOut(tween(160)) + shrinkVertically(tween(160))
+    ) {
+        Column {
+            if (topSpacing > 0.dp) Spacer(Modifier.height(topSpacing))
+            SuggestionsPanel(title, subtitle, suggestions, accentColor)
+        }
+    }
+}
+
 @Composable
 private fun PhaseBanner(message: String, isUserTurn: Boolean, isBanPhase: Boolean) {
     val isDone = message.contains("Complete", ignoreCase = true)
-    val bgColor = when {
+    val targetBg = when {
         isDone -> MFColors.Success.copy(alpha = 0.2f)
         isUserTurn -> MFColors.Accent.copy(alpha = 0.15f)
         isBanPhase -> MFColors.BanRed.copy(alpha = 0.15f)
@@ -375,6 +475,8 @@ private fun PhaseBanner(message: String, isUserTurn: Boolean, isBanPhase: Boolea
         isBanPhase -> MFColors.BanRed
         else -> MFColors.TextSecondary
     }
+    // Animate the banner background so phase transitions feel smooth.
+    val bgColor by animateColorAsState(targetBg, tween(300), label = "bannerBg")
     Box(modifier = Modifier.fillMaxWidth().background(bgColor).padding(horizontal = 16.dp, vertical = 10.dp)) {
         Text(
             text = if (isUserTurn) "YOUR TURN — $message" else message,
@@ -390,10 +492,11 @@ private fun BanSection(
     onAllyBanClick: (Int) -> Unit, onEnemyBanClick: (Int) -> Unit,
     onRemoveAllyBan: (Int) -> Unit, onRemoveEnemyBan: (Int) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().background(MFColors.BgCard).padding(horizontal = 8.dp, vertical = 6.dp),
+    Column(modifier = Modifier.fillMaxWidth().background(MFColors.BgCard)
+        .padding(horizontal = DraftDimens.Section, vertical = DraftDimens.Slot),
         verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(DraftDimens.Inner)) {
             Text("BLUE", color = MFColors.AllyBlue, fontWeight = FontWeight.Black, fontSize = 9.sp,
                 modifier = Modifier.width(28.dp))
             repeat(5) { idx ->
@@ -403,7 +506,7 @@ private fun BanSection(
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(DraftDimens.Inner)) {
             Text("RED", color = MFColors.EnemyRed, fontWeight = FontWeight.Black, fontSize = 9.sp,
                 modifier = Modifier.width(28.dp))
             repeat(5) { idx ->
@@ -420,7 +523,7 @@ private fun BanRow(
     bans: List<Hero?>, color: Color, isAlly: Boolean, banPhaseComplete: Boolean,
     modifier: Modifier = Modifier, onBanClick: (Int) -> Unit, onRemoveBan: (Int) -> Unit
 ) {
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(DraftDimens.Inner)) {
         repeat(5) { idx ->
             BanSlot(bans.getOrNull(idx), color, !banPhaseComplete,
                 Modifier.weight(1f).aspectRatio(1f),
@@ -471,7 +574,7 @@ private fun BanSlot(
 private fun TeamLabel(label: String, color: Color, isLeft: Boolean) {
     Text(label, color = color, fontWeight = FontWeight.Black, fontSize = 11.sp, letterSpacing = 1.sp,
         textAlign = if (isLeft) TextAlign.Start else TextAlign.End,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp))
+        modifier = Modifier.fillMaxWidth().padding(horizontal = DraftDimens.Inner, vertical = 2.dp))
 }
 
 @Composable
@@ -483,12 +586,14 @@ private fun PickSlot(
     val slotColor = if (isAlly) MFColors.AllyBlue else MFColors.EnemyRed
     val height = if (compact) 52.dp else 68.dp
     // User slot always gets accent border/strip regardless of turn
-    val borderColor = when {
+    val targetBorder = when {
         isUserSlot -> MFColors.Accent
         hero != null -> slotColor.copy(alpha = 0.5f)
         isActiveSlot -> slotColor
         else -> MFColors.TextHint.copy(alpha = 0.2f)
     }
+    // Animate border so the active-slot highlight pulses smoothly as the turn advances.
+    val borderColor by animateColorAsState(targetBorder, tween(250), label = "slotBorder")
     Box(
         modifier = Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(8.dp))
             .background(if (isUserSlot || hero != null || isActiveSlot) slotColor.copy(alpha = 0.08f) else MFColors.BgCard)
@@ -497,7 +602,7 @@ private fun PickSlot(
         contentAlignment = Alignment.CenterStart
     ) {
         if (hero != null) {
-            Row(modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(modifier = Modifier.fillMaxSize().padding(horizontal = DraftDimens.Slot), verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(model = hero.imageUrl, contentDescription = hero.name, contentScale = ContentScale.Crop,
                     modifier = Modifier.size(if (compact) 40.dp else 52.dp).clip(RoundedCornerShape(6.dp))
                         .background(MFColors.BgElevated))
@@ -548,12 +653,12 @@ private fun SuggestionsPanel(
     title: String, subtitle: String,
     suggestions: List<HeroSuggestion>, accentColor: Color
 ) {
-    Column(modifier = Modifier.fillMaxWidth().background(MFColors.BgCard).padding(12.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().background(MFColors.BgCard).padding(DraftDimens.Screen)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).background(accentColor, CircleShape))
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(DraftDimens.Slot))
             Text(title, color = accentColor, fontWeight = FontWeight.Black, fontSize = 12.sp, letterSpacing = 1.sp)
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(DraftDimens.Section))
             Text(subtitle, color = MFColors.TextHint, fontSize = 10.sp)
         }
         Spacer(Modifier.height(10.dp))
@@ -572,7 +677,7 @@ private fun SuggestionCard(rank: Int, suggestion: HeroSuggestion, accentColor: C
             .background(MFColors.BgElevated, RoundedCornerShape(10.dp))
             .border(1.dp, if (hasWarning) MFColors.Warning.copy(alpha = 0.7f) else tierColor.copy(alpha = 0.5f),
                 RoundedCornerShape(10.dp))
-            .padding(8.dp),
+            .padding(DraftDimens.Section),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box {
@@ -581,7 +686,7 @@ private fun SuggestionCard(rank: Int, suggestion: HeroSuggestion, accentColor: C
                 modifier = Modifier.size(60.dp).clip(RoundedCornerShape(8.dp)).background(MFColors.BgCard))
             Box(modifier = Modifier.align(Alignment.TopStart)
                 .background(tierColor, RoundedCornerShape(topStart = 8.dp, bottomEnd = 5.dp))
-                .padding(horizontal = 4.dp, vertical = 2.dp)) {
+                .padding(horizontal = DraftDimens.Inner, vertical = 2.dp)) {
                 Text(suggestion.hero.tier.label, color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Black)
             }
             Box(modifier = Modifier.align(Alignment.TopEnd).size(18.dp)
