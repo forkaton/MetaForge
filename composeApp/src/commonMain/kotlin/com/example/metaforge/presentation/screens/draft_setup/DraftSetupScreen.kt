@@ -1,5 +1,8 @@
 package com.example.metaforge.presentation.screens.draft_setup
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,10 +29,20 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun DraftSetupScreen(
     onNavigateBack: () -> Unit,
-    onStartDraft: (String, Int, Int, Boolean, String) -> Unit,
+    onStartDraft: (
+        rank: String,
+        partySize: Int,
+        pickPositions: List<Int>,
+        isFirstPick: Boolean,
+        preferredLanes: List<HeroLane>,
+        banCount: Int
+    ) -> Unit,
     viewModel: DraftSetupViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val canStart = uiState.isSquad ||
+            (uiState.pickPositions.size == uiState.partySize &&
+                    uiState.preferredLanes.size == uiState.partySize)
 
     Scaffold(
         containerColor = MFColors.Bg,
@@ -61,17 +74,16 @@ fun DraftSetupScreen(
         ) {
             Spacer(Modifier.height(20.dp))
 
-            // 1. TARGET TIER
-            SetupSection("1. TARGET TIER") {
+            // 1. TARGET TIER — controls ban count (Epic=3, Legend=4, Mythic=5)
+            SetupSection("1. TARGET TIER  —  ${uiState.banCountPerSide} BANS / TEAM") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Epic", "Legend", "Mythic").forEach { rank ->
-                        val enabled = rank == "Mythic"
                         SetupChip(
                             text = rank,
                             selected = uiState.rank == rank,
-                            enabled = enabled,
+                            enabled = true,
                             modifier = Modifier.weight(1f),
-                            onClick = { if (enabled) viewModel.setRank(rank) }
+                            onClick = { viewModel.setRank(rank) }
                         )
                     }
                 }
@@ -81,13 +93,12 @@ fun DraftSetupScreen(
             SetupSection("2. PARTY SIZE") {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(1 to "Solo", 2 to "Duo", 3 to "Trio", 5 to "Squad").forEach { (size, label) ->
-                        val enabled = size == 1
                         SetupChip(
                             text = label,
                             selected = uiState.partySize == size,
-                            enabled = enabled,
+                            enabled = true,
                             modifier = Modifier.weight(1f),
-                            onClick = { if (enabled) viewModel.setPartySize(size) }
+                            onClick = { viewModel.setPartySize(size) }
                         )
                     }
                 }
@@ -115,62 +126,62 @@ fun DraftSetupScreen(
                 }
             }
 
-            // 4. PICK ORDER
-            SetupSection("4. YOUR PICK ORDER  —  #${uiState.pickPosition}") {
-                Slider(
-                    value = uiState.pickPosition.toFloat(),
-                    onValueChange = { viewModel.setPickPosition(it.toInt()) },
-                    valueRange = 1f..5f,
-                    steps = 3,
-                    colors = SliderDefaults.colors(
-                        thumbColor = MFColors.Accent,
-                        activeTrackColor = MFColors.Accent,
-                        inactiveTrackColor = MFColors.BgElevated
-                    )
-                )
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    (1..5).forEach { n ->
-                        Text(
-                            "$n",
-                            color = if (uiState.pickPosition == n) MFColors.Accent else MFColors.TextHint,
-                            fontSize = 12.sp,
-                            fontWeight = if (uiState.pickPosition == n) FontWeight.Bold else FontWeight.Normal
-                        )
+            // 4 & 5: HIDDEN for Squad — recommendations cover all 5 ally slots.
+            AnimatedVisibility(visible = !uiState.isSquad, enter = fadeIn(), exit = fadeOut()) {
+                Column {
+                    // 4. PICK ORDER — radio buttons. Up to [partySize] selectable;
+                    // once the cap is hit, unselected rows are disabled until the
+                    // user clears one.
+                    SetupSection(
+                        "4. YOUR PICK ORDER  —  pick ${uiState.partySize} (${uiState.pickPositions.size}/${uiState.partySize})"
+                    ) {
+                        Column {
+                            (1..5).forEach { pos ->
+                                val isSelected = pos in uiState.pickPositions
+                                val canSelectMore = uiState.pickPositions.size < uiState.partySize
+                                RadioOption(
+                                    label = "Slot $pos",
+                                    selected = isSelected,
+                                    enabled = isSelected || canSelectMore,
+                                    onClick = { viewModel.togglePickPosition(pos) }
+                                )
+                            }
+                        }
+                    }
+
+                    // 5. PREFERRED LANES — same radio pattern, vertical list.
+                    SetupSection(
+                        "5. PREFERRED LANE  —  pick ${uiState.partySize} (${uiState.preferredLanes.size}/${uiState.partySize})"
+                    ) {
+                        Column {
+                            HeroLane.entries.forEach { lane ->
+                                val isSelected = lane in uiState.preferredLanes
+                                val canSelectMore = uiState.preferredLanes.size < uiState.partySize
+                                RadioOption(
+                                    label = lane.displayName,
+                                    selected = isSelected,
+                                    enabled = isSelected || canSelectMore,
+                                    onClick = { viewModel.togglePreferredLane(lane) }
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            // 5. PREFERRED LANE
-            SetupSection("5. PREFERRED LANE") {
-                var expanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-                    OutlinedTextField(
-                        value = uiState.preferredLane.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MFColors.Accent,
-                            unfocusedBorderColor = MFColors.BgElevated,
-                            focusedTextColor = MFColors.TextPrimary,
-                            unfocusedTextColor = MFColors.TextPrimary,
-                            unfocusedContainerColor = MFColors.BgCard,
-                            focusedContainerColor = MFColors.BgCard
-                        )
+            AnimatedVisibility(visible = uiState.isSquad, enter = fadeIn(), exit = fadeOut()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MFColors.BgCard, RoundedCornerShape(10.dp))
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        "Squad mode — recommendations cover all 5 ally slots, prioritising the lane your team is missing and the strongest meta picks.",
+                        color = MFColors.TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
                     )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.background(MFColors.BgCard)
-                    ) {
-                        HeroLane.entries.forEach { lane ->
-                            DropdownMenuItem(
-                                text = { Text(lane.displayName, color = MFColors.TextPrimary) },
-                                onClick = { viewModel.setPreferredLane(lane); expanded = false }
-                            )
-                        }
-                    }
                 }
             }
 
@@ -182,16 +193,27 @@ fun DraftSetupScreen(
                     onStartDraft(
                         uiState.rank,
                         uiState.partySize,
-                        uiState.pickPosition,
+                        uiState.pickPositions.toList().sorted(),
                         uiState.isFirstPick,
-                        uiState.preferredLane.name
+                        uiState.preferredLanes.toList(),
+                        uiState.banCountPerSide
                     )
                 },
+                enabled = canStart,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MFColors.Accent)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MFColors.Accent,
+                    disabledContainerColor = MFColors.BgCard
+                )
             ) {
-                Text("START SIMULATOR", fontWeight = FontWeight.Bold, color = MFColors.Bg, fontSize = 15.sp)
+                Text(
+                    if (canStart) "START SIMULATOR"
+                    else "Select ${uiState.partySize} pick order(s) and lane(s)",
+                    fontWeight = FontWeight.Bold,
+                    color = if (canStart) MFColors.Bg else MFColors.TextHint,
+                    fontSize = 15.sp
+                )
             }
 
             Spacer(Modifier.height(24.dp))
@@ -205,6 +227,45 @@ private fun SetupSection(title: String, content: @Composable () -> Unit) {
     Spacer(Modifier.height(10.dp))
     content()
     Spacer(Modifier.height(24.dp))
+}
+
+@Composable
+private fun RadioOption(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onClick() }
+            .padding(vertical = 6.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            enabled = enabled,
+            colors = RadioButtonDefaults.colors(
+                selectedColor = MFColors.Accent,
+                unselectedColor = MFColors.TextHint,
+                disabledSelectedColor = MFColors.Accent.copy(alpha = 0.5f),
+                disabledUnselectedColor = MFColors.TextHint.copy(alpha = 0.3f)
+            )
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            label,
+            color = when {
+                selected -> MFColors.Accent
+                enabled -> MFColors.TextPrimary
+                else -> MFColors.TextHint
+            },
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 14.sp
+        )
+    }
 }
 
 @Composable

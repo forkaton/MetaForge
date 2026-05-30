@@ -16,7 +16,9 @@ import com.example.metaforge.presentation.screens.settings.SettingsScreen
 object Routes {
     const val HOME         = "home"
     const val DRAFT_SETUP  = "draft_setup"
-    const val DRAFT_ARENA  = "draft_arena/{rank}/{party}/{pick}/{isFirst}/{lane}"
+    // picks and lanes are dash-separated (e.g. "1-3", "GOLD_LANE-JUNGLE").
+    // Use "none" sentinel for Squad (no per-slot preference).
+    const val DRAFT_ARENA  = "draft_arena/{rank}/{party}/{picks}/{isFirst}/{lanes}/{banCount}"
     const val HERO_SELECT  = "hero_select/{slot}/{isAlly}/{isBan}"
     const val COUNTER_PICK = "counter_pick"
     const val HERO_LIST    = "hero_list"
@@ -43,14 +45,17 @@ fun AppNavHost(navController: NavHostController) {
         composable(Routes.DRAFT_SETUP) {
             DraftSetupScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onStartDraft   = { rank, party, pick, isFirst, lane ->
+                onStartDraft   = { rank, party, picks, isFirst, lanes, banCount ->
+                    val picksArg = if (picks.isEmpty()) "none" else picks.joinToString("-")
+                    val lanesArg = if (lanes.isEmpty()) "none" else lanes.joinToString("-")
                     navController.navigate(
                         Routes.DRAFT_ARENA
                             .replace("{rank}", rank)
                             .replace("{party}", party.toString())
-                            .replace("{pick}", pick.toString())
+                            .replace("{picks}", picksArg)
                             .replace("{isFirst}", isFirst.toString())
-                            .replace("{lane}", lane)
+                            .replace("{lanes}", lanesArg)
+                            .replace("{banCount}", banCount.toString())
                     )
                 }
             )
@@ -58,11 +63,12 @@ fun AppNavHost(navController: NavHostController) {
 
         composable(Routes.DRAFT_ARENA) { entry ->
             DraftScreen(
-                rank     = entry.arguments?.getString("rank")    ?: "Mythic",
-                party    = entry.arguments?.getString("party")?.toIntOrNull()  ?: 1,
-                pick     = entry.arguments?.getString("pick")?.toIntOrNull()   ?: 1,
-                isFirst  = entry.arguments?.getString("isFirst")?.toBoolean()  ?: true,
-                lane     = entry.arguments?.getString("lane")    ?: "GOLD_LANE",
+                rank      = entry.arguments?.getString("rank")    ?: "Mythic",
+                party     = entry.arguments?.getString("party")?.toIntOrNull()  ?: 1,
+                picksArg  = entry.arguments?.getString("picks")   ?: "1",
+                isFirst   = entry.arguments?.getString("isFirst")?.toBoolean()  ?: true,
+                lanesArg  = entry.arguments?.getString("lanes")   ?: "GOLD_LANE",
+                banCount  = entry.arguments?.getString("banCount")?.toIntOrNull() ?: 5,
                 onNavigateBack          = { navController.popBackStack() },
                 onNavigateToHeroSelect  = { slot, isAlly, isBan ->
                     navController.navigate(

@@ -26,6 +26,10 @@ class DraftRepositoryImpl(
         _draftState.update { it.copy(isUserFirstPick = isFirstPick) }
     }
 
+    override suspend fun setBanCountPerSide(count: Int) {
+        _draftState.update { it.copy(banCountPerSide = count.coerceIn(3, 5)) }
+    }
+
     override suspend fun syncHeroes() {
         try {
             val response = api.fetchHeroesPositions()
