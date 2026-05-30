@@ -3,28 +3,24 @@ package com.example.metaforge.presentation.screens.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +31,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.metaforge.domain.model.HeroMetaEntry
 import com.example.metaforge.domain.model.HeroTier
+import com.example.metaforge.presentation.components.LandOfDawnBanner
+import com.example.metaforge.presentation.components.ToolCard
 import com.example.metaforge.presentation.screens.hero_encyclopedia.TierListUiState
 import com.example.metaforge.presentation.screens.hero_encyclopedia.TierListViewModel
 import com.example.metaforge.presentation.screens.hero_encyclopedia.color
@@ -53,8 +51,6 @@ fun HomeScreen(
     val topWinHero  = heroes.firstOrNull { it.tier == HeroTier.SS }
     val topBanHero  = heroes.filter { it.tier == HeroTier.SS }.getOrNull(1)
     val topPickHero = heroes.firstOrNull { it.tier == HeroTier.S }
-    val metaHeroes  = (heroes.filter { it.tier == HeroTier.SS } +
-                       heroes.filter { it.tier == HeroTier.S }).take(12)
 
     Column(
         modifier = Modifier
@@ -62,117 +58,101 @@ fun HomeScreen(
             .background(MFColors.Bg)
             .verticalScroll(rememberScrollState())
     ) {
-        // ── HEADER ────────────────────────────────────────────────────────────
-        HomeHeader(onNavigateToSettings = onNavigateToSettings)
-
-        // ── META SNAPSHOT ─────────────────────────────────────────────────────
-        MetaSnapshotRow(topWinHero, topBanHero, topPickHero)
-
-        Spacer(Modifier.height(4.dp))
-
-        // ── TOOLS ─────────────────────────────────────────────────────────────
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        // ── 1) HEADER: brand METAFORGE + Settings ─────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 12.dp, top = 18.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            SectionLabel("TOOLS")
-            ToolCard(
-                title       = "DRAFT SIMULATOR",
-                subtitle    = "AI-powered 5v5 draft — counters, synergies & hero suggestions",
-                icon        = Icons.Default.AutoAwesome,
-                accentColor = MFColors.Accent,
-                tagLabel    = "AI PICKS",
-                onClick     = onNavigateToDraftSetup
-            )
-            ToolCard(
-                title       = "HERO TIER LIST",
-                subtitle    = "SS/S/A/B/C/D meta rankings • Win, Pick & Ban rates by rank",
-                icon        = Icons.Default.Leaderboard,
-                accentColor = MFColors.PrimaryLt,
-                tagLabel    = "UPDATED",
-                onClick     = onNavigateToHeroList
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        // ── META HIGHLIGHTS ───────────────────────────────────────────────────
-        if (metaHeroes.isNotEmpty()) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                SectionLabel("META HIGHLIGHTS")
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    metaHeroes.forEach { hero ->
-                        MetaHeroCard(hero = hero, onClick = onNavigateToHeroList)
-                    }
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(9.dp)
+                        .clip(CircleShape)
+                        .background(MFColors.Accent)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "METAFORGE",
+                    color = MFColors.TextPrimary,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp
+                )
             }
-            Spacer(Modifier.height(20.dp))
+            IconButton(
+                onClick = onNavigateToSettings,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(MFColors.BgCard)
+            ) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = MFColors.Accent,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
+
+        Spacer(Modifier.height(14.dp))
+
+        // ── 2) BANNER (atmosfer, tanpa teks judul) ────────────────────────────
+        LandOfDawnBanner(modifier = Modifier.padding(horizontal = 16.dp))
+
+        Spacer(Modifier.height(22.dp))
+
+        // ── 3) DUA TOMBOL TOOL (tanpa emoji) ──────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ToolCard(
+                title = "Draft Simulator",
+                subtitle = "Simulasi ban & pick",
+                icon = Icons.Default.Tune,
+                onClick = onNavigateToDraftSetup,
+                modifier = Modifier.weight(1f)
+            )
+            ToolCard(
+                title = "Hero Tier List",
+                subtitle = "Peringkat meta",
+                icon = Icons.Default.Leaderboard,
+                onClick = onNavigateToHeroList,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(28.dp))
+
+        // ── 4) SECTION STATS ──────────────────────────────────────────────────
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            SectionLabel("SEASON STATISTICS")
+            Spacer(Modifier.height(12.dp))
+            MetaSnapshotRow(topWinHero, topBanHero, topPickHero)
+        }
+
+        Spacer(Modifier.height(40.dp))
 
         // ── FOOTER ────────────────────────────────────────────────────────────
         Text(
-            "MetaForge • May 2026 Season • Mythic rank data",
+            "MetaForge • Season 40 • Mythic rank data",
             color = MFColors.TextHint,
             fontSize = 10.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp)
         )
     }
 }
 
-// ─── Header ──────────────────────────────────────────────────────────────────
-
-@Composable
-private fun HomeHeader(onNavigateToSettings: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Brush.verticalGradient(listOf(MFColors.Primary, MFColors.BgCard)))
-            .padding(horizontal = 20.dp, vertical = 20.dp)
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Live badge
-                Box(
-                    modifier = Modifier
-                        .background(MFColors.Success.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
-                        .border(1.dp, MFColors.Success.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(5.dp).background(MFColors.Success, CircleShape))
-                        Spacer(Modifier.width(4.dp))
-                        Text("LIVE", color = MFColors.Success, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Text("Season 29  •  Mythic Meta", color = MFColors.TextSecondary, fontSize = 11.sp)
-                Spacer(Modifier.weight(1f))
-                // Settings button
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(MFColors.BgCard.copy(alpha = 0.6f))
-                        .border(1.dp, MFColors.Accent.copy(alpha = 0.3f), CircleShape)
-                        .clickable { onNavigateToSettings() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Settings, "Settings", tint = MFColors.Accent, modifier = Modifier.size(18.dp))
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-            Text("METAFORGE", color = MFColors.TextPrimary, fontWeight = FontWeight.Black, fontSize = 30.sp, letterSpacing = 4.sp)
-            Text("Mobile Legends Meta Analyzer", color = MFColors.Accent, fontSize = 12.sp, letterSpacing = 1.sp)
-        }
-    }
-}
-
-// ─── Meta Snapshot ───────────────────────────────────────────────────────────
+// ─── Stat Row ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun MetaSnapshotRow(
@@ -183,15 +163,17 @@ private fun MetaSnapshotRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
             .background(MFColors.BgCard)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .border(1.dp, MFColors.BgElevated, RoundedCornerShape(18.dp))
+            .padding(horizontal = 12.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SnapshotStat("TOP WIN RATE", topWin?.name ?: "—",  "54.5%", topWin?.portraitUrl,  topWin?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
-        Box(Modifier.width(1.dp).height(52.dp).background(MFColors.BgElevated))
-        SnapshotStat("TOP BANNED",   topBan?.name ?: "—",  "65.2%", topBan?.portraitUrl,  topBan?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
-        Box(Modifier.width(1.dp).height(52.dp).background(MFColors.BgElevated))
-        SnapshotStat("TOP PICKED",   topPick?.name ?: "—", "22.1%", topPick?.portraitUrl, topPick?.tier?.color() ?: MFColors.TextHint, Modifier.weight(1f))
+        SnapshotStat("TOP WIN", topWin?.name ?: "—",  "54.5%", topWin?.portraitUrl,  topWin?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
+        Box(Modifier.width(1.dp).height(40.dp).align(Alignment.CenterVertically).background(MFColors.BgElevated))
+        SnapshotStat("TOP BAN",   topBan?.name ?: "—",  "65.2%", topBan?.portraitUrl,  topBan?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
+        Box(Modifier.width(1.dp).height(40.dp).align(Alignment.CenterVertically).background(MFColors.BgElevated))
+        SnapshotStat("TOP PICK",   topPick?.name ?: "—", "22.1%", topPick?.portraitUrl, topPick?.tier?.color() ?: MFColors.TextHint, Modifier.weight(1f))
     }
 }
 
@@ -201,68 +183,36 @@ private fun SnapshotStat(
     portrait: String?, tierColor: Color, modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = MFColors.TextHint, fontSize = 8.sp, letterSpacing = 0.3.sp, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(4.dp))
+        Text(label, color = MFColors.TextHint, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+        Spacer(Modifier.height(8.dp))
         if (!portrait.isNullOrEmpty()) {
             AsyncImage(
                 model = portrait, contentDescription = heroName, contentScale = ContentScale.Crop,
-                modifier = Modifier.size(32.dp).clip(CircleShape).background(MFColors.BgElevated).border(1.5.dp, tierColor, CircleShape)
+                modifier = Modifier.size(38.dp).clip(CircleShape).background(MFColors.BgElevated).border(1.5.dp, tierColor, CircleShape)
             )
         } else {
-            Box(Modifier.size(32.dp).clip(CircleShape).background(MFColors.BgElevated).border(1.5.dp, tierColor, CircleShape), Alignment.Center) {
-                Text(heroName.take(2), color = tierColor, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Box(Modifier.size(38.dp).clip(CircleShape).background(MFColors.BgElevated).border(1.5.dp, tierColor, CircleShape), Alignment.Center) {
+                Text(heroName.take(1), color = tierColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(Modifier.height(3.dp))
-        Text(heroName, color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-        Text(value, color = tierColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text(heroName, color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(value, color = tierColor, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
     }
 }
 
-// ─── Tool Card ───────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ToolCard(
-    title: String, subtitle: String, icon: ImageVector,
-    accentColor: Color, tagLabel: String, onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(Brush.horizontalGradient(listOf(MFColors.BgCard, MFColors.BgElevated)))
-            .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(14.dp))
-            .clickable { onClick() }
-            .padding(16.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))
-                    .background(accentColor.copy(alpha = 0.12f))
-                    .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) { Icon(icon, null, tint = accentColor, modifier = Modifier.size(24.dp)) }
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Box(
-                        modifier = Modifier.background(accentColor.copy(alpha = 0.18f), RoundedCornerShape(3.dp))
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) { Text(tagLabel, color = accentColor, fontSize = 8.sp, fontWeight = FontWeight.Bold) }
-                }
-                Spacer(Modifier.height(3.dp))
-                Text(subtitle, color = MFColors.TextSecondary, fontSize = 11.sp, lineHeight = 15.sp)
-            }
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MFColors.TextHint, modifier = Modifier.size(20.dp))
-        }
+private fun SectionLabel(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(3.dp, 14.dp).background(MFColors.Accent, RoundedCornerShape(2.dp)))
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = MFColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp)
     }
 }
 
-// ─── Meta Hero Card ──────────────────────────────────────────────────────────
-
+// Catatan: MetaHeroCard tetap ada namun tidak dipanggil di HomeScreen (mematuhi aturan: jangan hapus file/composable).
 @Composable
 private fun MetaHeroCard(hero: HeroMetaEntry, onClick: () -> Unit) {
     val tierColor = hero.tier.color()
@@ -290,17 +240,5 @@ private fun MetaHeroCard(hero: HeroMetaEntry, onClick: () -> Unit) {
         }
         Spacer(Modifier.height(4.dp))
         Text(hero.name, color = MFColors.TextPrimary, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        Text(hero.heroClass, color = MFColors.TextHint, fontSize = 8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    }
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SectionLabel(text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(3.dp, 14.dp).background(MFColors.Accent, RoundedCornerShape(2.dp)))
-        Spacer(Modifier.width(8.dp))
-        Text(text, color = MFColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp)
     }
 }

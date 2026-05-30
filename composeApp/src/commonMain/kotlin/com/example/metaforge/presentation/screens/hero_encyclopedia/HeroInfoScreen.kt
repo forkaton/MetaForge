@@ -1,5 +1,8 @@
 package com.example.metaforge.presentation.screens.hero_encyclopedia
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,8 +28,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.metaforge.data.local.HeroMetaRepository
 import com.example.metaforge.domain.model.*
+import com.example.metaforge.presentation.components.pressScale
 import com.example.metaforge.ui.theme.MFColors
 import org.koin.compose.viewmodel.koinViewModel
+
+// ─── KMP-safe number formatting (pengganti String.format yang JVM-only) ───────
+private fun Double.toFixed(digits: Int): String {
+    val negative = this < 0
+    val v = kotlin.math.abs(this)
+    var factor = 1L
+    repeat(digits) { factor *= 10 }
+    val scaled = kotlin.math.round(v * factor).toLong()
+    val intPart = scaled / factor
+    val fracPart = scaled % factor
+    val sign = if (negative) "-" else ""
+    return if (digits <= 0) "$sign$intPart"
+    else "$sign$intPart.${fracPart.toString().padStart(digits, '0')}"
+}
+private fun Float.toFixed(digits: Int): String = toDouble().toFixed(digits)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +133,7 @@ private fun HeroDetailHeader(hero: HeroMetaEntry) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TierBadge(hero.tier)
                     Text("—", color = MFColors.TextHint)
-                    Text("Score: ${"%.1f".format(hero.overallScore)}", color = MFColors.Warning, fontSize = 13.sp)
+                    Text("Score: ${hero.overallScore.toFixed(1)}", color = MFColors.Warning, fontSize = 13.sp)
                 }
                 Spacer(Modifier.height(6.dp))
                 if (hero.lanes.isNotEmpty()) {
@@ -163,23 +182,36 @@ private fun OverviewTab(hero: HeroMetaEntry) {
     }
 
     Column(modifier = Modifier.padding(16.dp)) {
-        Text("Statistics", color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        // Label dengan bar aksen (konsisten dengan halaman lain)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(width = 3.dp, height = 14.dp).clip(RoundedCornerShape(2.dp)).background(MFColors.Accent))
+            Spacer(Modifier.width(8.dp))
+            Text("STATISTICS", color = MFColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.sp)
+        }
         Spacer(Modifier.height(12.dp))
 
-        // Stat type selector
-        Row(modifier = Modifier.fillMaxWidth().background(MFColors.BgCard, RoundedCornerShape(8.dp))) {
+        // Stat type selector (press-scale + animasi warna)
+        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(MFColors.BgCard)) {
             StatType.entries.forEach { statType ->
                 val selected = selectedStatType == statType
+                val bg by animateColorAsState(
+                    if (selected) MFColors.Accent else Color.Transparent, tween(200), label = "statBg"
+                )
+                val txt by animateColorAsState(
+                    if (selected) MFColors.Bg else MFColors.TextSecondary, tween(200), label = "statTxt"
+                )
                 Box(
                     modifier = Modifier.weight(1f)
-                        .background(if (selected) MFColors.Accent else Color.Transparent, RoundedCornerShape(8.dp))
-                        .clickable { selectedStatType = statType }.padding(vertical = 10.dp),
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(bg)
+                        .pressScale { selectedStatType = statType }
+                        .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         statType.name.replace("_", " ").split(" ")
                             .joinToString(" ") { it.lowercase().replaceFirstChar { c -> c.uppercase() } },
-                        color = if (selected) MFColors.Bg else MFColors.TextSecondary,
+                        color = txt,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, fontSize = 12.sp
                     )
                 }
@@ -194,11 +226,16 @@ private fun OverviewTab(hero: HeroMetaEntry) {
             Spacer(Modifier.width(4.dp))
             TimePeriod.entries.forEach { period ->
                 val selected = selectedPeriod == period
+                val border by animateColorAsState(
+                    if (selected) MFColors.Accent else MFColors.BgElevated, tween(200), label = "periodBorder"
+                )
                 Box(
                     modifier = Modifier
-                        .background(if (selected) MFColors.BgElevated else Color.Transparent, RoundedCornerShape(4.dp))
-                        .border(1.dp, if (selected) MFColors.Accent else MFColors.BgElevated, RoundedCornerShape(4.dp))
-                        .clickable { selectedPeriod = period }.padding(horizontal = 8.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (selected) MFColors.BgElevated else Color.Transparent)
+                        .border(1.dp, border, RoundedCornerShape(4.dp))
+                        .pressScale { selectedPeriod = period }
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(period.label, color = if (selected) MFColors.Accent else MFColors.TextSecondary, fontSize = 10.sp)
                 }
@@ -228,16 +265,18 @@ private fun OverviewTab(hero: HeroMetaEntry) {
 
 @Composable
 private fun RankStatRow(rankName: String, value: Float, maxValue: Float, barColor: Color, isPercent: Boolean) {
+    val targetFraction = (value / maxValue).coerceIn(0f, 1f)
+    val animatedFraction by animateFloatAsState(targetFraction, tween(500), label = "statBar")
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(rankName, color = MFColors.TextSecondary, fontSize = 12.sp, modifier = Modifier.width(110.dp))
         Spacer(Modifier.width(8.dp))
         Box(modifier = Modifier.weight(1f).height(20.dp).background(MFColors.BgElevated, RoundedCornerShape(10.dp))) {
             Box(modifier = Modifier.fillMaxHeight()
-                .fillMaxWidth((value / maxValue).coerceIn(0f, 1f))
+                .fillMaxWidth(animatedFraction)
                 .background(barColor, RoundedCornerShape(10.dp)))
         }
         Spacer(Modifier.width(8.dp))
-        Text(if (isPercent) "${"%.1f".format(value)}%" else "%.2f".format(value),
+        Text(if (isPercent) "${value.toFixed(1)}%" else value.toFixed(2),
             color = barColor, fontSize = 12.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.width(44.dp), textAlign = TextAlign.End)
     }
@@ -286,7 +325,7 @@ private fun MatchupHeroRow(matchup: HeroMatchupEntry) {
         Column(modifier = Modifier.weight(1f)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(matchup.name, color = MFColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                Text("Score: ${"%.2f".format(matchup.score)}", color = MFColors.TextSecondary, fontSize = 11.sp)
+                Text("Score: ${matchup.score.toFixed(2)}", color = MFColors.TextSecondary, fontSize = 11.sp)
             }
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

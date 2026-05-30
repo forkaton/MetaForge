@@ -1,8 +1,9 @@
 package com.example.metaforge.presentation.screens.hero_select
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.metaforge.domain.model.HeroLane
+import com.example.metaforge.presentation.components.pressScale
 import com.example.metaforge.ui.theme.MFColors
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -101,8 +103,9 @@ fun HeroSelectScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .background(MFColors.BgCard, RoundedCornerShape(10.dp))
-                            .border(1.dp, MFColors.BgElevated, RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MFColors.BgCard)
+                            .border(1.dp, MFColors.BgElevated, RoundedCornerShape(12.dp))
                             .padding(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -164,22 +167,22 @@ fun HeroSelectScreen(
                                 else        state.enemyBannedHeroNames.contains(hero.name)
                             } else {
                                 state.pickedHeroNames.contains(hero.name) ||
-                                state.bannedHeroNames.contains(hero.name)
+                                        state.bannedHeroNames.contains(hero.name)
                             }
 
                             Column(
                                 modifier = Modifier
+                                    .pressScale(enabled = !isUnavailable) {
+                                        viewModel.pickHero(slotIndex, isAlly, isBan, hero)
+                                        onNavigateBack()
+                                    }
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(if (isUnavailable) MFColors.BgCard.copy(alpha = 0.5f) else MFColors.BgCard)
                                     .border(
                                         1.dp,
                                         if (isUnavailable) MFColors.TextHint.copy(alpha = 0.2f) else accentColor.copy(alpha = 0.15f),
                                         RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable(enabled = !isUnavailable) {
-                                        viewModel.pickHero(slotIndex, isAlly, isBan, hero)
-                                        onNavigateBack()
-                                    },
+                                    ),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Box(
@@ -243,17 +246,26 @@ fun HeroSelectScreen(
 
 @Composable
 private fun LaneChip(label: String, selected: Boolean, color: Color, onClick: () -> Unit) {
+    val bg by animateColorAsState(
+        if (selected) color else color.copy(alpha = 0.08f), tween(200), label = "laneBg"
+    )
+    val border by animateColorAsState(
+        color.copy(alpha = if (selected) 1f else 0.3f), tween(200), label = "laneBorder"
+    )
+    val txt by animateColorAsState(
+        if (selected) Color.White else color, tween(200), label = "laneTxt"
+    )
     Box(
         modifier = Modifier
+            .pressScale(onClick = onClick)
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) color else color.copy(alpha = 0.08f))
-            .border(1.dp, color.copy(alpha = if (selected) 1f else 0.3f), RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(20.dp))
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Text(
             label,
-            color = if (selected) Color.White else color,
+            color = txt,
             fontSize = 12.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
         )

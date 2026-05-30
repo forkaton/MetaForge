@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.example.metaforge.domain.model.Hero
 import com.example.metaforge.domain.model.HeroLane
+import com.example.metaforge.presentation.components.pressScale
 import com.example.metaforge.ui.theme.MFColors
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -335,10 +337,10 @@ private fun ConfigChip(label: String, onClick: () -> Unit, dimmed: Boolean = fal
     val accent = if (dimmed) MFColors.TextHint else MFColors.Accent
     Box(
         modifier = Modifier
+            .pressScale(enabled = !dimmed, onClick = onClick)
             .clip(RoundedCornerShape(16.dp))
             .background(MFColors.BgElevated)
             .border(1.dp, accent.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-            .clickable(enabled = !dimmed) { onClick() }
             .padding(horizontal = 10.dp, vertical = DraftDimens.Inner)
     ) {
         Text(label, color = accent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
@@ -453,6 +455,7 @@ private fun DraftLandscapeContent(
             TeamLabel("BLUE TEAM", MFColors.AllyBlue, isLeft = true)
             BanRow(state.draftState.allyBans, state.draftState.banCountPerSide,
                 MFColors.AllyBlue, state.draftState.isBanPhaseComplete,
+                modifier = Modifier.fillMaxWidth(),
                 onBanClick = { idx -> onNavigateToHeroSelect(idx, true, true) },
                 onRemoveBan = { idx -> onRemoveHero(idx, true, true) })
             state.draftState.allySlots.forEachIndexed { idx, hero ->
@@ -490,6 +493,7 @@ private fun DraftLandscapeContent(
             TeamLabel("RED TEAM", MFColors.EnemyRed, isLeft = false)
             BanRow(state.draftState.enemyBans, state.draftState.banCountPerSide,
                 MFColors.EnemyRed, state.draftState.isBanPhaseComplete,
+                modifier = Modifier.fillMaxWidth(),
                 onBanClick = { idx -> onNavigateToHeroSelect(idx, false, true) },
                 onRemoveBan = { idx -> onRemoveHero(idx, false, true) })
             state.draftState.enemySlots.forEachIndexed { idx, hero ->
@@ -580,7 +584,6 @@ private fun BanSection(
                     Modifier.weight(1f).aspectRatio(1f),
                     onClick = { onAllyBanClick(idx) }, onRemove = { onRemoveAllyBan(idx) })
             }
-            repeat(5 - banCountPerSide) { Spacer(Modifier.weight(1f)) }
         }
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(DraftDimens.Inner)) {
@@ -591,7 +594,6 @@ private fun BanSection(
                     Modifier.weight(1f).aspectRatio(1f),
                     onClick = { onEnemyBanClick(idx) }, onRemove = { onRemoveEnemyBan(idx) })
             }
-            repeat(5 - banCountPerSide) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -607,7 +609,6 @@ private fun BanRow(
                 Modifier.weight(1f).aspectRatio(1f),
                 onClick = { onBanClick(idx) }, onRemove = { onRemoveBan(idx) })
         }
-        repeat(5 - banCountPerSide) { Spacer(Modifier.weight(1f)) }
     }
 }
 
@@ -616,14 +617,15 @@ private fun BanSlot(
     hero: Hero?, color: Color, canBan: Boolean,
     modifier: Modifier = Modifier, onClick: () -> Unit, onRemove: () -> Unit
 ) {
+    val clickMod = if (canBan && hero == null) Modifier.pressScale(onClick = onClick) else Modifier
     Box(
         modifier = modifier
+            .then(clickMod)
             .clip(RoundedCornerShape(6.dp))
             .background(if (hero != null) color.copy(alpha = 0.15f) else MFColors.BgElevated)
             .border(1.dp, if (hero != null) color.copy(alpha = 0.6f) else
                 if (canBan) color.copy(alpha = 0.4f) else MFColors.TextHint.copy(alpha = 0.3f),
-                RoundedCornerShape(6.dp))
-            .then(if (canBan && hero == null) Modifier.clickable { onClick() } else Modifier),
+                RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.Center
     ) {
         if (hero != null) {
@@ -669,11 +671,13 @@ private fun PickSlot(
         else -> MFColors.TextHint.copy(alpha = 0.2f)
     }
     val borderColor by animateColorAsState(targetBorder, tween(250), label = "slotBorder")
+    val clickMod = if (isActiveSlot && hero == null) Modifier.pressScale(onClick = onClick) else Modifier
     Box(
-        modifier = Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(8.dp))
+        modifier = Modifier.fillMaxWidth().height(height)
+            .then(clickMod)
+            .clip(RoundedCornerShape(8.dp))
             .background(if (isUserSlot || hero != null || isActiveSlot) slotColor.copy(alpha = 0.08f) else MFColors.BgCard)
-            .border(if (isUserSlot) 2.dp else 1.dp, borderColor, RoundedCornerShape(8.dp))
-            .then(if (isActiveSlot && hero == null) Modifier.clickable { onClick() } else Modifier),
+            .border(if (isUserSlot) 2.dp else 1.dp, borderColor, RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.CenterStart
     ) {
         if (hero != null) {
@@ -779,10 +783,15 @@ private fun SuggestionCard(rank: Int, suggestion: HeroSuggestion, accentColor: C
         }
         if (hasWarning) {
             Spacer(Modifier.height(3.dp))
-            Box(modifier = Modifier.fillMaxWidth()
-                .background(MFColors.Warning.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 3.dp, vertical = 2.dp)) {
-                Text("⚠ ${suggestion.warnings.first()}", color = MFColors.Warning, fontSize = 7.sp, maxLines = 2, lineHeight = 10.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .background(MFColors.Warning.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 3.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.WarningAmber, contentDescription = null, tint = MFColors.Warning, modifier = Modifier.size(9.dp))
+                Spacer(Modifier.width(2.dp))
+                Text(suggestion.warnings.first(), color = MFColors.Warning, fontSize = 7.sp, maxLines = 2, lineHeight = 10.sp)
             }
         }
     }

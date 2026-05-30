@@ -2,7 +2,6 @@ package com.example.metaforge.presentation.screens.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.metaforge.data.local.datastore.ThemePreferences
+import com.example.metaforge.presentation.components.pressScale
 import com.example.metaforge.ui.theme.MFColors
 import com.example.metaforge.ui.theme.MFThemeState
 import kotlinx.coroutines.launch
@@ -35,7 +35,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
         containerColor = MFColors.Bg,
         topBar = {
             TopAppBar(
-                title = { Text("SETTINGS", color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                title = { Text("SETTINGS", color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp, letterSpacing = 0.5.sp) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = MFColors.Accent)
@@ -57,26 +57,34 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
 
             SectionLabel("APPEARANCE")
 
-            // Single dark/light mode toggle button
+            // Toggle dark/light dengan gesture press-scale
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(MFColors.BgCard)
                     .border(2.dp, MFColors.Accent, RoundedCornerShape(14.dp))
-                    .clickable { scope.launch { themePrefs.setDarkTheme(!isDark) } }
+                    .pressScale { scope.launch { themePrefs.setDarkTheme(!isDark) } }
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
-                        contentDescription = null,
-                        tint = MFColors.Accent,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MFColors.Accent.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
+                            contentDescription = null,
+                            tint = MFColors.Accent,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             if (isDark) "Dark Mode" else "Light Mode",
@@ -118,11 +126,50 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                     )
                 }
             }
+
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider(color = MFColors.BgElevated)
+            Spacer(Modifier.height(4.dp))
+
+            SectionLabel("ABOUT")
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MFColors.BgCard, RoundedCornerShape(14.dp))
+                    .border(1.dp, MFColors.BgElevated, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MFColors.Accent)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text("MetaForge", color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Spacer(Modifier.height(2.dp))
+                        Text("Mobile Legends Meta Analyzer • Season 40", color = MFColors.TextHint, fontSize = 11.sp)
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text, color = MFColors.TextHint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(width = 3.dp, height = 13.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MFColors.Accent)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = MFColors.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+    }
 }
