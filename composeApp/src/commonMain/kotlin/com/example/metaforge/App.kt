@@ -23,15 +23,22 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.metaforge.core.connectivity.ConnectivityObserver
+import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.data.local.datastore.ThemePreferences
 import com.example.metaforge.domain.repository.DraftRepository
 import com.example.metaforge.presentation.navigation.AppNavHost
 import com.example.metaforge.presentation.theme.MetaForgeTheme
 import com.example.metaforge.ui.theme.MFColors
 import com.example.metaforge.ui.theme.MFThemeState
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
 import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
+
+/** Cold-open sync throttle: skip [DraftRepository.syncHeroes] if the last
+ *  successful fetch was less than 6 hours ago. */
+private const val SYNC_THROTTLE_MS = 6L * 60 * 60 * 1000
 
 @Composable
 fun App() {
@@ -45,6 +52,7 @@ private fun AppContent() {
     val themePrefs: ThemePreferences       = koinInject()
     val connectivity: ConnectivityObserver = koinInject()
     val draftRepo: DraftRepository         = koinInject()
+    val draftPrefs: DraftPreferences       = koinInject()
 
     val isDark      by themePrefs.isDarkTheme().collectAsStateWithLifecycle(initialValue = true)
     val isConnected by connectivity.isConnected.collectAsStateWithLifecycle()
@@ -59,10 +67,17 @@ private fun AppContent() {
 
     SideEffect { MFThemeState.isDark = isDark }
 
+    // Auto-sync on launch, but throttle to once every 6h so cold-opens don't
+    // hammer the public API. If a sync has never succeeded, fire immediately
+    // — that's how a brand-new install gets its first "Last fetch: …" label.
     LaunchedEffect(Unit) {
         scope.launch {
-            try { draftRepo.syncHeroes() }
-            catch (_: Exception) {}
+            try {
+                val lastAt = draftPrefs.getLastFetchedAt().first()
+                val now = Clock.System.now().toEpochMilliseconds()
+                val isStale = lastAt == null || (now - lastAt) >= SYNC_THROTTLE_MS
+                if (isStale) draftRepo.syncHeroes()
+            } catch (_: Exception) {}
         }
     }
 

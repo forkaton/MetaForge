@@ -36,8 +36,9 @@ val appModule = module {
     single { DraftPreferences(get<DataStore<Preferences>>()) }
     single { ThemePreferences(get<DataStore<Preferences>>()) }
 
-    // Fetches hero meta JSON from GitHub, caches in DataStore for offline use
-    single { HeroMetaFetcher(get(), get<DataStore<Preferences>>()) }
+    // Fetches hero meta JSON from GitHub, caches in DataStore for offline use.
+    // Also stamps DraftPreferences.lastFetchedAt on every successful network call.
+    single { HeroMetaFetcher(get(), get<DataStore<Preferences>>(), get<DraftPreferences>()) }
     single<suspend () -> String> { { get<HeroMetaFetcher>().fetchJson() } }
 
     // Hero meta service — caches parsed heroes in memory for the session

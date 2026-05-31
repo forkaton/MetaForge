@@ -15,16 +15,29 @@ data class HeroSuggestion(
     val warnings: List<String>
 )
 
+/**
+ * A labelled bucket of pick suggestions. One group per preferred lane in
+ * Solo/Duo/Trio mode, one per missing-lane ally slot in Squad mode.
+ */
+data class PickSuggestionGroup(
+    val label: String,
+    val lane: HeroLane?,
+    val suggestions: List<HeroSuggestion>
+)
+
 sealed interface DraftUiState {
     data object Loading : DraftUiState
     data class Ready(
         val draftState: DraftState,
         val isUserTurn: Boolean = false,
         val banSuggestions: List<HeroSuggestion> = emptyList(),
-        val pickSuggestions: List<HeroSuggestion> = emptyList(),
+        val pickSuggestionGroups: List<PickSuggestionGroup> = emptyList(),
         val turnMessage: String = "",
-        val currentPickPosition: Int = 1,
-        val currentLane: HeroLane = HeroLane.GOLD_LANE
-    ) : DraftUiState
+        val currentPickPositions: Set<Int> = emptySet(),
+        val currentLanes: Set<HeroLane> = emptySet(),
+        val partySize: Int = 1
+    ) : DraftUiState {
+        val isSquad: Boolean get() = partySize >= 5
+    }
     data class Error(val message: String) : DraftUiState
 }

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.datetime.Clock
 
 class DraftRepositoryImpl(
     private val prefs: DraftPreferences?,
@@ -24,6 +25,10 @@ class DraftRepositoryImpl(
 
     override suspend fun setFirstPick(isFirstPick: Boolean) {
         _draftState.update { it.copy(isUserFirstPick = isFirstPick) }
+    }
+
+    override suspend fun setBanCountPerSide(count: Int) {
+        _draftState.update { it.copy(banCountPerSide = count.coerceIn(3, 5)) }
     }
 
     override suspend fun syncHeroes() {
@@ -47,6 +52,11 @@ class DraftRepositoryImpl(
                 }
             } ?: emptyList()
             if (heroes.isNotEmpty()) database.saveHeroes(heroes)
+            // Stamp the moment of a successful HTTP round-trip — even if the
+            // parsed roster ended up empty, the network was clearly reachable.
+            // The home label cares about "did we reach the server", not "did
+            // we get N rows".
+            prefs?.saveLastFetchedAt(Clock.System.now().toEpochMilliseconds())
         } catch (e: Exception) {
             throw e
         }

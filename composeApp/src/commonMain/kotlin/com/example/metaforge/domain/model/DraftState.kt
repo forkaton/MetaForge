@@ -5,12 +5,16 @@ data class DraftState(
     val enemySlots: List<Hero?> = List(5) { null },
     val allyBans: List<Hero?> = List(5) { null },
     val enemyBans: List<Hero?> = List(5) { null },
-    val isUserFirstPick: Boolean = true
+    val isUserFirstPick: Boolean = true,
+    // Bans per side, derived from target tier: Epic=3, Legend=4, Mythic=5.
+    // Internal ban lists stay sized 5 for stable indexing; only the first
+    // [banCountPerSide] entries count toward [isBanPhaseComplete] / are bannable.
+    val banCountPerSide: Int = 5
 ) {
-    // Ban phase: free selection, count-based
-    val totalAllyBans = allyBans.count { it != null }
-    val totalEnemyBans = enemyBans.count { it != null }
-    val isBanPhaseComplete = totalAllyBans >= 5 && totalEnemyBans >= 5
+    // Ban phase: free selection within the first [banCountPerSide] slots per side.
+    val totalAllyBans = allyBans.take(banCountPerSide).count { it != null }
+    val totalEnemyBans = enemyBans.take(banCountPerSide).count { it != null }
+    val isBanPhaseComplete = totalAllyBans >= banCountPerSide && totalEnemyBans >= banCountPerSide
 
     val allyCount = allySlots.count { it != null }
     val enemyCount = enemySlots.count { it != null }
@@ -52,8 +56,9 @@ data class DraftState(
     }
 
     fun activePickSlots(): List<Pair<Boolean, Int>> {
+        val waves = pickWaves(isUserFirstPick)
         val wave = currentPickWave()
-        return if (wave in 0..5) pickWaves(isUserFirstPick)[wave] else emptyList()
+        return if (wave in waves.indices) waves[wave] else emptyList()
     }
 
     fun isCurrentPickSlot(index: Int, isAlly: Boolean): Boolean =
@@ -63,12 +68,15 @@ data class DraftState(
 
     fun canBan(index: Int, isAlly: Boolean): Boolean {
         if (isBanPhaseComplete) return false
+        if (index < 0 || index >= banCountPerSide) return false
         return if (isAlly) allyBans.getOrNull(index) == null
         else enemyBans.getOrNull(index) == null
     }
 
     fun getAllPickedAndBannedHeroes(): List<Hero> =
-        (allySlots + enemySlots + allyBans + enemyBans).filterNotNull()
+        (allySlots + enemySlots +
+                allyBans.take(banCountPerSide) + enemyBans.take(banCountPerSide))
+            .filterNotNull()
 
     fun getAllPickedHeroes(): List<Hero> = (allySlots + enemySlots).filterNotNull()
 
@@ -82,11 +90,14 @@ data class DraftState(
     fun removeAllyBan(index: Int) = copy(allyBans = allyBans.replace(index, null))
     fun removeEnemyBan(index: Int) = copy(enemyBans = enemyBans.replace(index, null))
 
-    fun resetAll() = DraftState(isUserFirstPick = isUserFirstPick)
+    fun resetAll() = DraftState(
+        isUserFirstPick = isUserFirstPick,
+        banCountPerSide = banCountPerSide
+    )
 
     fun getTurnMessage(): String = when {
         isComplete -> "Draft Complete! Ready for battle."
-        !isBanPhaseComplete -> "Ban Phase — ${totalAllyBans + totalEnemyBans}/10 bans"
+        !isBanPhaseComplete -> "Ban Phase — ${totalAllyBans + totalEnemyBans}/${banCountPerSide * 2} bans"
         else -> {
             val slots = activePickSlots()
             val team = if (slots.any { it.first }) "BLUE" else "RED"

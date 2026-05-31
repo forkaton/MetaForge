@@ -12,4 +12,5 @@ interface DraftRepository {
     suspend fun banHero(slotIndex: Int, isAlly: Boolean, hero: Hero?)
     suspend fun clearDraft()
     suspend fun setFirstPick(isFirstPick: Boolean)
+    suspend fun setBanCountPerSide(count: Int)
 }

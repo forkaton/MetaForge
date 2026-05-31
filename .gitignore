@@ -48,3 +48,5 @@ daemon/
 kotlin-profile/
 native/
 wrapper/
+
+desktop.ini
