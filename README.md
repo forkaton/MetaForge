@@ -105,8 +105,7 @@
 
 > **Coverage report:**
 >
-> ![Coverage Sprint 4](<img width="1453" height="362" alt="image" src="https://github.com/user-attachments/assets/2e39a6d6-62a2-400e-9126-a93e95f3bc98" />
-)
+> ![Coverage Sprint 4](coverage.jpg)
 >
 > *Generate ulang lokal: `./gradlew :composeApp:jacocoTestReport`  `composeApp/build/reports/jacoco/jacocoTestReport/html/index.html`*
 
