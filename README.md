@@ -1,7 +1,7 @@
 # MetaForge: MLBB Strategic Drafting Advisor
 
 ## 1. Deskripsi Proyek
-**MetaForge** adalah aplikasi *mobile multiplatform* (Android & iOS) yang memandu pemain Mobile Legends: Bang Bang (MLBB) dalam fase *draft pick*. MetaForge menggunakan **Sistem Skoring Algoritmik (Rule-Based System)** berbasis data meta terkini untuk menghitung prioritas *pick*, poin sinergi, dan persentase *counter* lawan — memberikan rekomendasi *drafting* sekelas turnamen *Esports*.
+**MetaForge** adalah aplikasi *mobile multiplatform* (Android & iOS) yang membantu pemain Mobile Legends: Bang Bang (MLBB) dalam fase *draft pick*. MetaForge menggunakan **Sistem Skoring Algoritmik (Rule-Based System)** berbasis data meta terkini untuk menghitung prioritas *pick*, poin sinergi, dan persentase *counter* lawan memberikan rekomendasi *drafting*.
 
 ## 2. Tim Pengembang
 | Nama | NIM | GitHub |
@@ -73,25 +73,20 @@
 
 ## 5. Fitur Utama
 
-### Sprint 4: Polish & Testing (Saat Ini)
-* **Target Tier → Ban Count Dinamis:** Epic (3 ban/tim), Legend (4 ban/tim), Mythic (5 ban/tim). UI ban-row otomatis menyesuaikan jumlah slot yang aktif.
-* **Party Size Multi-Select:** Solo / Duo / Trio / Squad. User pilih `N` *Slot* + `N` *Preferred Lane* lewat **radio button** (kapasitas dibatasi sesuai party size). Squad menyembunyikan pilihan slot/lane — rekomendasi otomatis menyentuh semua 5 slot ally.
+### Sprint 4: Polish & Testing
+* **Target Tier  Ban Count Dinamis:** Epic (3 ban/tim), Legend (4 ban/tim), Mythic (5 ban/tim). UI ban-row otomatis menyesuaikan jumlah slot yang aktif.
+* **Party Size Multi-Select:** Solo / Duo / Trio / Squad. User pilih `N` *Slot* + `N` *Preferred Lane* lewat **radio button** (kapasitas dibatasi sesuai party size). Squad menyembunyikan pilihan slot/lane rekomendasi otomatis semua 5 slot ally.
 * **Smart Suggestion v2:**
   - *Solo/Duo/Trio:* satu grup rekomendasi per lane preferensi. Begitu ally mengisi lane itu, grup-nya **hilang** dari panel (drop covered lane).
-  - *Squad:* meta-first per active ally slot, **exclude lane** yang sudah ditutup ally maupun lane yang baru saja di-claim slot lain di gelombang sama.
-  - *Ban suggestion:* lane-agnostic (selalu top-tier meta — bans adalah keputusan tim, bukan per role).
+  - *Squad:* meta-first per active ally slot, **exclude lane** yang sudah ditutup ally maupun lane yang baru saja di-claim slot lain.
+  - *Ban suggestion:* lane-agnostic (selalu top-tier meta  bans adalah keputusan tim, bukan per role).
 * **Mid-draft Reconfiguration:** Pick order & preferred lane bisa diganti di tengah draft (chip `Lane: …` / `Pick: …` di config row) via `MultiSelectDialog`.
-* **Live Data Freshness Label:** Header banner & footer menampilkan `Last fetch: <tanggal>` (kotlinx-datetime), di-update tiap kali fetch online sukses dan disimpan di DataStore. Self-throttle 6 jam di `HeroMetaFetcher` & cooldown 6h di `App.kt` mencegah spam ke API publik.
 * **UI Polish:**
   - `AnimatedVisibility` (fade + expand/shrink) untuk panel suggestion.
   - `Crossfade` antar phase Loading / Error / Ready di Draft Arena.
   - `animateColorAsState` pada phase banner & active-slot border.
   - Material 3 spacing scale (`DraftDimens.Screen/Section/Slot/Inner`).
   - Retry-able error state dengan tombol `Retry` dan ikon ErrorOutline.
-* **Performance:**
-  - Lambda `onRemove` di-`remember(viewModel)` agar identity stabil → child composable tidak rekomposisi karena perubahan referensi.
-  - Heavy logic (scoring, missing-lane analysis, snake-pick wave detection) tetap di ViewModel; composable hanya konsumsi `StateFlow`.
-  - `combine` di `loadAndObserve` re-compute hanya saat input flow berubah.
 * **Unit Tests (25 tes JVM, 0 failures):**
   - State: Loading, Ready (meta-ranked bans), Error.
   - Snake-pick wave (1-2-2-2-2-1) untuk first-pick & second-pick user.
@@ -100,7 +95,7 @@
   - Epic-tier 3-ban completion.
   - Squad meta-first + lane exclusion per active slot.
   - Duo drop-group ketika lane sudah ter-cover ally.
-* **UI / Instrumented Tests (`DraftSetupScreenTest`, `DraftSetupTierTest`, `DraftSetupPartySizeTest` — 8 tes Compose UI):**
+* **UI / Instrumented Tests (`DraftSetupScreenTest`, `DraftSetupTierTest`, `DraftSetupPartySizeTest`  8 tes Compose UI):**
   - Semua tier chips (Epic/Legend/Mythic) dan party size chips terlihat pada load pertama.
   - Label ban count berubah sesuai tier (`3/4/5 BANS / TEAM`).
   - START dinonaktifkan sampai user memilih N slot + N lane sesuai party size.
@@ -110,9 +105,10 @@
 
 > **Coverage report:**
 >
-> ![Coverage Sprint 4](docs/coverage_sprint4.png)
+> ![Coverage Sprint 4](<img width="1453" height="362" alt="image" src="https://github.com/user-attachments/assets/2e39a6d6-62a2-400e-9126-a93e95f3bc98" />
+)
 >
-> *Generate ulang lokal: `./gradlew :composeApp:jacocoTestReport` → `composeApp/build/reports/jacoco/jacocoTestReport/html/index.html`*
+> *Generate ulang lokal: `./gradlew :composeApp:jacocoTestReport`  `composeApp/build/reports/jacoco/jacocoTestReport/html/index.html`*
 
 ### Sprint 3: Advanced Features
 * **Remote Hero Meta Fetch:** Data hero di-fetch dari GitHub Raw API (`hero-meta-final.json`) setiap kali aplikasi dibuka. Data di-cache di DataStore sehingga tetap tersedia saat offline.
@@ -161,12 +157,12 @@ composeApp/src/
 ## 7. Sprint Progress
 | Sprint | Status | Deliverable |
 |--------|--------|-------------|
-| W11 — Sprint 1: Planning & Setup | ✅ Done | Repo, CI/CD, DI, navigation scaffold |
-| W12 — Sprint 2: Core Features | ✅ Done | Draft sim, hero list, CRUD, local data |
-| W13 — Sprint 3: Advanced Features | ✅ Done | API, offline cache, tier list, dark mode, dual suggestions |
-| W14 — Sprint 4: Polish & Testing | ✅ Done | Tier→ban count, party multi-select, squad meta-first, lane-agnostic bans, live data label, 25 unit tests + 8 UI tests, 77% coverage |
-| W15 — Sprint 5: Final Preparation | ⏳ | Release APK, final docs, demo prep |
-| W16 — UAS: Final Demo Day | ⏳ | Presentation |
+| W11  Sprint 1: Planning & Setup | ✅ Done | Repo, CI/CD, DI, navigation scaffold |
+| W12  Sprint 2: Core Features | ✅ Done | Draft sim, hero list, CRUD, local data |
+| W13  Sprint 3: Advanced Features | ✅ Done | API, offline cache, tier list, dark mode, dual suggestions |
+| W14  Sprint 4: Polish & Testing | ✅ Done | Tierban count, party multi-select, squad meta-first, lane-agnostic bans, live data label, 25 unit tests + 8 UI tests, 77% coverage |
+| W15  Sprint 5: Final Preparation | ⏳ | Release APK, final docs, demo prep |
+| W16  UAS: Final Demo Day | ⏳ | Presentation |
 
 ---
 
@@ -182,7 +178,7 @@ composeApp/src/
 ./gradlew :composeApp:installDebug
 ```
 
-### Unit Tests (JVM — no device needed)
+### Unit Tests (JVM  no device needed)
 ```bash
 ./gradlew :composeApp:testDebugUnitTest
 # Expected: 25 tests, 0 failures (DraftViewModelTest × 9, DraftRepositoryTest × 14,
@@ -214,5 +210,4 @@ https://github.com/user-attachments/assets/bdf4f982-e067-4f27-87bb-1fedf4255839
 
 ## 11. Video Demo Sprint 4
 
-<!-- Setelah upload via GitHub Issues drag-drop, ganti placeholder di bawah dengan URL user-attachments yang muncul. -->
 https://github.com/user-attachments/assets/REPLACE-WITH-SPRINT4-UPLOAD-URL
