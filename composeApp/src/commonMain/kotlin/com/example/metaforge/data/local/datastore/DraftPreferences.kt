@@ -3,6 +3,7 @@ package com.example.metaforge.data.local.datastore
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -12,6 +13,7 @@ open class DraftPreferences(
 ) {
     companion object {
         val LAST_DRAFT_KEY = stringPreferencesKey("last_draft")
+        val LAST_FETCH_TS_KEY = longPreferencesKey("last_fetch_ts")
     }
 
     open suspend fun saveLastDraft(draftData: String) {
@@ -28,5 +30,16 @@ open class DraftPreferences(
         dataStore.edit { prefs ->
             prefs.remove(LAST_DRAFT_KEY)
         }
+    }
+
+    /** Epoch millis of the last successful online hero-data sync. */
+    open suspend fun saveLastFetchedAt(epochMillis: Long) {
+        dataStore.edit { prefs ->
+            prefs[LAST_FETCH_TS_KEY] = epochMillis
+        }
+    }
+
+    open fun getLastFetchedAt(): Flow<Long?> = dataStore.data.map { prefs ->
+        prefs[LAST_FETCH_TS_KEY]
     }
 }

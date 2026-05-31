@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.metaforge.core.util.formatLastFetched
+import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.data.local.datastore.ThemePreferences
 import com.example.metaforge.presentation.components.pressScale
 import com.example.metaforge.ui.theme.MFColors
@@ -28,7 +30,10 @@ import org.koin.compose.koinInject
 @Composable
 fun SettingsScreen(onNavigateBack: () -> Unit) {
     val themePrefs: ThemePreferences = koinInject()
+    val draftPrefs: DraftPreferences = koinInject()
     val isDark by themePrefs.isDarkTheme().collectAsStateWithLifecycle(initialValue = MFThemeState.isDark)
+    val lastFetchedAt by draftPrefs.getLastFetchedAt().collectAsStateWithLifecycle(initialValue = null)
+    val lastFetchLabel = formatLastFetched(lastFetchedAt)
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -152,7 +157,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                     Column {
                         Text("MetaForge", color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(Modifier.height(2.dp))
-                        Text("Mobile Legends Meta Analyzer • Season 40", color = MFColors.TextHint, fontSize = 11.sp)
+                        Text("Mobile Legends Meta Analyzer • Last fetch: $lastFetchLabel", color = MFColors.TextHint, fontSize = 11.sp)
                     }
                 }
             }

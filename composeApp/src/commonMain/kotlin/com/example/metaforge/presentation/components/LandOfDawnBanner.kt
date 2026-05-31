@@ -30,7 +30,8 @@ import metaforge.composeapp.generated.resources.land_of_dawn
 @Composable
 fun LandOfDawnBanner(
     modifier: Modifier = Modifier,
-    seasonLabel: String = "SEASON 40",
+    /** Text shown next to the LIVE dot, e.g. "LAST FETCH: 30 May 2026". */
+    statusLabel: String = "LAST FETCH: —",
 ) {
     Box(
         modifier = modifier
@@ -76,7 +77,7 @@ fun LandOfDawnBanner(
             )
             Spacer(Modifier.width(7.dp))
             Text(
-                "LIVE • $seasonLabel",
+                "LIVE • $statusLabel",
                 color = MFColors.Accent,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,

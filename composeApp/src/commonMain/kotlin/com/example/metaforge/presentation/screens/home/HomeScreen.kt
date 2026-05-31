@@ -29,14 +29,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.example.metaforge.core.util.formatLastFetched
+import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.domain.model.HeroMetaEntry
 import com.example.metaforge.domain.model.HeroTier
 import com.example.metaforge.presentation.components.LandOfDawnBanner
+import com.example.metaforge.presentation.components.MetaforgeLogo
 import com.example.metaforge.presentation.components.ToolCard
 import com.example.metaforge.presentation.screens.hero_encyclopedia.TierListUiState
 import com.example.metaforge.presentation.screens.hero_encyclopedia.TierListViewModel
 import com.example.metaforge.presentation.screens.hero_encyclopedia.color
 import com.example.metaforge.ui.theme.MFColors
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -52,27 +56,30 @@ fun HomeScreen(
     val topBanHero  = heroes.filter { it.tier == HeroTier.SS }.getOrNull(1)
     val topPickHero = heroes.firstOrNull { it.tier == HeroTier.S }
 
+    // No public API exposes the MLBB season number, so we surface the next
+    // best signal: when the data was last refreshed online.
+    val prefs: DraftPreferences = koinInject()
+    val lastFetchedAt by prefs.getLastFetchedAt()
+        .collectAsStateWithLifecycle(initialValue = null)
+    val lastFetchLabel = formatLastFetched(lastFetchedAt)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MFColors.Bg)
             .verticalScroll(rememberScrollState())
     ) {
-        // ── 1) HEADER: brand METAFORGE + Settings ─────────────────────────────
+        // ── 1) HEADER: MetaForge logo + wordmark + Settings ──────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 12.dp, top = 18.dp, bottom = 4.dp),
+                .padding(start = 16.dp, end = 12.dp, top = 18.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(9.dp)
-                        .clip(CircleShape)
-                        .background(MFColors.Accent)
-                )
+                // M-Crystal logo — same geometry as the launcher icon
+                MetaforgeLogo(size = 36.dp)
                 Spacer(Modifier.width(10.dp))
                 Text(
                     "METAFORGE",
@@ -101,7 +108,10 @@ fun HomeScreen(
         Spacer(Modifier.height(14.dp))
 
         // ── 2) BANNER (atmosfer, tanpa teks judul) ────────────────────────────
-        LandOfDawnBanner(modifier = Modifier.padding(horizontal = 16.dp))
+        LandOfDawnBanner(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            statusLabel = "LAST FETCH: $lastFetchLabel"
+        )
 
         Spacer(Modifier.height(22.dp))
 
@@ -141,7 +151,7 @@ fun HomeScreen(
 
         // ── FOOTER ────────────────────────────────────────────────────────────
         Text(
-            "MetaForge • Season 40 • Mythic rank data",
+            "MetaForge • Last fetch: $lastFetchLabel • Mythic rank data",
             color = MFColors.TextHint,
             fontSize = 10.sp,
             textAlign = TextAlign.Center,

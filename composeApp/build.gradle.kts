@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    jacoco
 }
 
 // Load local.properties for API keys
@@ -105,6 +106,14 @@ kotlin {
             implementation(libs.sqldelight.android.driver)
             implementation(libs.datastore.preferences.android)
         }
+
+        // Compose UI (instrumented) tests — run on device/emulator
+        androidInstrumentedTest.dependencies {
+            implementation(libs.compose.ui.test.junit4)
+            implementation(libs.test.ext.junit)
+            implementation(libs.espresso.core)
+            implementation(kotlin("test"))
+        }
         
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -123,6 +132,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         // Inject API key from local.properties
         buildConfigField(
@@ -139,6 +149,9 @@ android {
     }
     
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(
@@ -150,6 +163,11 @@ android {
     
     buildFeatures {
         buildConfig = true
+    }
+
+    // Compose UI test support: manifest declares the test activity
+    dependencies {
+        debugImplementation(libs.compose.ui.test.manifest)
     }
     
     compileOptions {
@@ -164,4 +182,71 @@ sqldelight {
             packageName.set("com.example.metaforge.data.local")
         }
     }
+}
+
+// ── JaCoCo: unit-test coverage report for the Android debug variant ─────────
+jacoco { toolVersion = "0.8.11" }
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    group = "verification"
+    description = "Generates JaCoCo coverage report for the Android debug unit tests."
+    dependsOn("testDebugUnitTest")
+
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+        csv.required.set(false)
+    }
+
+    // Include-only strategy — we count just the packages we actually unit-test.
+    // Single-segment `**/foo/**` patterns are honoured reliably by Gradle's
+    // Ant glob; multi-segment ones (`**/a/b/c/**`) silently no-op, so we stick
+    // to the leaf folder name and prune internal noise via excludes below.
+    val includePatterns = listOf(
+        "**/draft_arena/**",  // DraftViewModel + DraftUiState (Screen excluded)
+        "**/draft_setup/**",  // DraftSetupViewModel
+        "**/model/**",        // domain.model — DraftState etc.
+        "**/util/**"          // core.util — LastFetchFormatter
+    )
+
+    val excludePatterns = listOf(
+        // UI inside the included packages
+        "**/*Screen*", "**/*ScreenKt*",
+        "**/ComposableSingletons*",
+        // util/ noise we don't unit-test
+        "**/DatabaseDriverFactory*", "**/Extensions*",
+        // domain.model trivial data carriers — kept untested by design
+        "**/Hero.class", "**/Hero$*",
+        "**/HeroLane*", "**/HeroRecommendation*", "**/SynergyResult*",
+        // Legacy NoteAI scaffolding (lives in domain.model too)
+        "**/Note.class", "**/Note$*",
+        // Trivial DataClass
+        "**/DraftSetupUiState*",
+        // Generic build noise
+        "**/BuildConfig*", "**/R.class", "**/R$*.class",
+        "**/Manifest*.*", "**/*Test*.*"
+    )
+
+    val kotlinDebugTree = fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+        include(includePatterns)
+        exclude(excludePatterns)
+    }
+    val javaDebugTree = fileTree("${layout.buildDirectory.get()}/intermediates/javac/debug/classes") {
+        include(includePatterns)
+        exclude(excludePatterns)
+    }
+
+    sourceDirectories.setFrom(files(
+        "src/commonMain/kotlin",
+        "src/androidMain/kotlin"
+    ))
+    // Pass trees directly — wrapping with files(...) discards the per-tree
+    // exclude filters and silently includes everything we tried to skip.
+    classDirectories.setFrom(kotlinDebugTree, javaDebugTree)
+    executionData.setFrom(fileTree(layout.buildDirectory.get()) {
+        include(
+            "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            "jacoco/testDebugUnitTest.exec"
+        )
+    })
 }
