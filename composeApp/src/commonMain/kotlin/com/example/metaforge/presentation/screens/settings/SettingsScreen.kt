@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.metaforge.core.util.AppInfo
 import com.example.metaforge.core.util.formatLastFetched
 import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.data.local.datastore.ThemePreferences
@@ -154,11 +155,17 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                             .background(MFColors.Accent)
                     )
                     Spacer(Modifier.width(10.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text("MetaForge", color = MFColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         Spacer(Modifier.height(2.dp))
                         Text("Mobile Legends Meta Analyzer • Last fetch: $lastFetchLabel", color = MFColors.TextHint, fontSize = 11.sp)
                     }
+                    Text(
+                        "v${AppInfo.versionName}",
+                        color = MFColors.Accent,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp
+                    )
                 }
             }
         }
