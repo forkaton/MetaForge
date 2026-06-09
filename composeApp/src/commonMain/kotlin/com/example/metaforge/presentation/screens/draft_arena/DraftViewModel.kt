@@ -3,6 +3,7 @@ package com.example.metaforge.presentation.screens.draft_arena
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.metaforge.data.local.HeroMetaService
+import com.example.metaforge.data.local.toHero
 import com.example.metaforge.domain.model.DraftState
 import com.example.metaforge.domain.model.HeroLane
 import com.example.metaforge.domain.model.HeroMetaEntry
@@ -96,7 +97,8 @@ class DraftViewModel(
                     val banSuggestions = if (!state.isBanPhaseComplete)
                         computeBanSuggestions(state) else emptyList()
                     val groups = if (isUserTurn)
-                        computePickGroups(state, lanes, partySize, activeAllyUserSlots.map { it.second })
+                        computePickGroups(state, lanes, partySize,
+                            activeAllyUserSlots.map { it.second }, picks)
                     else emptyList()
 
                     _uiState.value = DraftUiState.Ready(
@@ -162,7 +164,8 @@ class DraftViewModel(
         state: DraftState,
         preferredLanes: Set<HeroLane>,
         partySize: Int,
-        activeAllyIndices: List<Int>
+        activeAllyIndices: List<Int>,
+        userPickPositions: Set<Int>
     ): List<PickSuggestionGroup> {
         if (allHeroMeta.isEmpty()) return emptyList()
         val isSquad = partySize >= 5
@@ -172,25 +175,42 @@ class DraftViewModel(
 
         return if (isSquad) {
             val excluded = coveredLanes.toMutableSet()
-            activeAllyIndices.map { slotIdx ->
-                val suggestions = computeLanePickSuggestions(state, lane = null, excludedLanes = excluded)
-                suggestions.firstOrNull()?.hero?.lanes
-                    ?.firstOrNull { it !in excluded }
-                    ?.let { excluded.add(it) }
-                PickSuggestionGroup(
-                    label = "Slot ${slotIdx + 1}",
-                    lane = null,
-                    suggestions = suggestions
-                )
-            }
+            // Skip slots already locked in this wave so a filled slot's group drops
+            // out and the remaining slot(s) refresh against the newly-covered lanes.
+            activeAllyIndices
+                .filter { state.allySlots[it] == null }
+                .map { slotIdx ->
+                    val suggestions = computeLanePickSuggestions(state, lane = null, excludedLanes = excluded)
+                    suggestions.firstOrNull()?.hero?.lanes
+                        ?.firstOrNull { it !in excluded }
+                        ?.let { excluded.add(it) }
+                    PickSuggestionGroup(
+                        label = "Slot ${slotIdx + 1}",
+                        lane = null,
+                        suggestions = suggestions,
+                        targetSlotIndex = slotIdx
+                    )
+                }
         } else {
+            // Pair user's pick positions with their preferred lanes by order so each
+            // lane group knows which ally slot a click on its recommendation fills.
+            //   Solo  picks={3}, lanes={Gold}            → Gold→slot 2
+            //   Duo   picks={3,4}, lanes={Gold, ExpLane} → Gold→2, Exp→3
+            val sortedPicks = userPickPositions.sorted().map { it - 1 }
+            val sortedLanes = preferredLanes.toList()
+            val laneToSlot = sortedLanes.zip(sortedPicks).toMap()
+
             preferredLanes
                 .filter { it !in coveredLanes }
                 .map { lane ->
+                    val mapped = laneToSlot[lane]
+                    val target = mapped?.takeIf { it in activeAllyIndices && state.allySlots[it] == null }
+                        ?: activeAllyIndices.firstOrNull { state.allySlots[it] == null }
                     PickSuggestionGroup(
                         label = lane.displayName,
                         lane = lane,
-                        suggestions = computeLanePickSuggestions(state, lane)
+                        suggestions = computeLanePickSuggestions(state, lane),
+                        targetSlotIndex = target
                     )
                 }
         }
@@ -256,6 +276,42 @@ class DraftViewModel(
     private fun tierScore(tier: HeroTier) = when (tier) {
         HeroTier.SS -> 100; HeroTier.S -> 80; HeroTier.A -> 60
         HeroTier.B -> 40; HeroTier.C -> 20; HeroTier.D -> 10
+    }
+
+    /**
+     * Apply a ban suggestion by filling the next empty user-side ban slot.
+     * Falls back to the enemy side once ally bans are full, so the ban phase
+     * can be driven end-to-end from the suggestion panel.
+     */
+    fun applyBanSuggestion(suggestion: HeroSuggestion) {
+        viewModelScope.launch {
+            val state = (_uiState.value as? DraftUiState.Ready)?.draftState ?: return@launch
+            if (state.isBanPhaseComplete) return@launch
+            val hero = suggestion.hero.toHero()
+            val allyIdx = (0 until state.banCountPerSide).firstOrNull { state.allyBans[it] == null }
+            if (allyIdx != null) {
+                draftRepository.banHero(allyIdx, true, hero)
+                return@launch
+            }
+            val enemyIdx = (0 until state.banCountPerSide).firstOrNull { state.enemyBans[it] == null }
+            if (enemyIdx != null) draftRepository.banHero(enemyIdx, false, hero)
+        }
+    }
+
+    /**
+     * Apply a pick suggestion to the slot the group is bound to. For Solo this is
+     * the user's only pick slot; for Duo/Trio it's the slot paired with the group's
+     * lane (e.g. user picks={3,4}, lanes={Gold,Exp} → Gold suggestions land in s3,
+     * Exp in s4); for Squad it's the slot named in the group label.
+     */
+    fun applyPickSuggestion(group: PickSuggestionGroup, suggestion: HeroSuggestion) {
+        val target = group.targetSlotIndex ?: return
+        viewModelScope.launch {
+            val state = (_uiState.value as? DraftUiState.Ready)?.draftState ?: return@launch
+            if (!state.isCurrentPickSlot(target, isAlly = true)) return@launch
+            if (state.allySlots.getOrNull(target) != null) return@launch
+            draftRepository.pickHero(target, true, suggestion.hero.toHero())
+        }
     }
 
     fun removeHero(slotIndex: Int, isAlly: Boolean, isBan: Boolean) {

@@ -154,6 +154,10 @@ fun DraftScreen(
     ) { padding ->
         val onRemove: (Int, Boolean, Boolean) -> Unit =
             remember(viewModel) { { idx, isAlly, isBan -> viewModel.removeHero(idx, isAlly, isBan) } }
+        val onBanSuggestionClick: (HeroSuggestion) -> Unit =
+            remember(viewModel) { { viewModel.applyBanSuggestion(it) } }
+        val onPickSuggestionClick: (PickSuggestionGroup, HeroSuggestion) -> Unit =
+            remember(viewModel) { { g, s -> viewModel.applyPickSuggestion(g, s) } }
         val openLaneDialog = remember { { showLaneDialog = true } }
         val openPickPosDialog = remember { { showPickPosDialog = true } }
 
@@ -176,9 +180,11 @@ fun DraftScreen(
                         val isLandscape = maxWidth > maxHeight
                         if (isLandscape) {
                             DraftLandscapeContent(state, onNavigateToHeroSelect, onRemove,
+                                onBanSuggestionClick, onPickSuggestionClick,
                                 openLaneDialog, openPickPosDialog)
                         } else {
                             DraftPortraitContent(state, onNavigateToHeroSelect, onRemove,
+                                onBanSuggestionClick, onPickSuggestionClick,
                                 openLaneDialog, openPickPosDialog)
                         }
                     }
@@ -354,6 +360,8 @@ private fun DraftPortraitContent(
     state: DraftUiState.Ready,
     onNavigateToHeroSelect: (Int, Boolean, Boolean) -> Unit,
     onRemoveHero: (Int, Boolean, Boolean) -> Unit,
+    onBanSuggestionClick: (HeroSuggestion) -> Unit,
+    onPickSuggestionClick: (PickSuggestionGroup, HeroSuggestion) -> Unit,
     onLaneClick: () -> Unit,
     onPickPosClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -386,7 +394,8 @@ private fun DraftPortraitContent(
             title = "BAN SUGGESTIONS",
             subtitle = banSubtitleFor(state),
             suggestions = state.banSuggestions,
-            accentColor = MFColors.BanRed
+            accentColor = MFColors.BanRed,
+            onSuggestionClick = onBanSuggestionClick
         )
 
         Spacer(Modifier.height(DraftDimens.Inner))
@@ -427,7 +436,8 @@ private fun DraftPortraitContent(
                 subtitle = pickGroupSubtitle(state, group),
                 suggestions = group.suggestions,
                 accentColor = MFColors.Accent,
-                topSpacing = DraftDimens.Section
+                topSpacing = DraftDimens.Section,
+                onSuggestionClick = { onPickSuggestionClick(group, it) }
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -441,6 +451,8 @@ private fun DraftLandscapeContent(
     state: DraftUiState.Ready,
     onNavigateToHeroSelect: (Int, Boolean, Boolean) -> Unit,
     onRemoveHero: (Int, Boolean, Boolean) -> Unit,
+    onBanSuggestionClick: (HeroSuggestion) -> Unit,
+    onPickSuggestionClick: (PickSuggestionGroup, HeroSuggestion) -> Unit,
     onLaneClick: () -> Unit,
     onPickPosClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -476,14 +488,16 @@ private fun DraftLandscapeContent(
                 visible = state.banSuggestions.isNotEmpty(),
                 title = "BAN SUGGESTIONS",
                 subtitle = banSubtitleFor(state),
-                suggestions = state.banSuggestions, accentColor = MFColors.BanRed
+                suggestions = state.banSuggestions, accentColor = MFColors.BanRed,
+                onSuggestionClick = onBanSuggestionClick
             )
             state.pickSuggestionGroups.forEach { group ->
                 AnimatedSuggestions(
                     visible = group.suggestions.isNotEmpty(),
                     title = "PICK • ${group.label.uppercase()}",
                     subtitle = pickGroupSubtitle(state, group),
-                    suggestions = group.suggestions, accentColor = MFColors.Accent
+                    suggestions = group.suggestions, accentColor = MFColors.Accent,
+                    onSuggestionClick = { onPickSuggestionClick(group, it) }
                 )
             }
         }
@@ -527,7 +541,8 @@ private fun AnimatedSuggestions(
     subtitle: String,
     suggestions: List<HeroSuggestion>,
     accentColor: Color,
-    topSpacing: androidx.compose.ui.unit.Dp = 0.dp
+    topSpacing: androidx.compose.ui.unit.Dp = 0.dp,
+    onSuggestionClick: ((HeroSuggestion) -> Unit)? = null
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -536,7 +551,7 @@ private fun AnimatedSuggestions(
     ) {
         Column {
             if (topSpacing > 0.dp) Spacer(Modifier.height(topSpacing))
-            SuggestionsPanel(title, subtitle, suggestions, accentColor)
+            SuggestionsPanel(title, subtitle, suggestions, accentColor, onSuggestionClick)
         }
     }
 }
@@ -727,7 +742,8 @@ private fun PickSlot(
 @Composable
 private fun SuggestionsPanel(
     title: String, subtitle: String,
-    suggestions: List<HeroSuggestion>, accentColor: Color
+    suggestions: List<HeroSuggestion>, accentColor: Color,
+    onSuggestionClick: ((HeroSuggestion) -> Unit)? = null
 ) {
     Column(modifier = Modifier.fillMaxWidth().background(MFColors.BgCard).padding(DraftDimens.Screen)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -737,19 +753,34 @@ private fun SuggestionsPanel(
             Spacer(Modifier.width(DraftDimens.Section))
             Text(subtitle, color = MFColors.TextHint, fontSize = 10.sp)
         }
+        if (onSuggestionClick != null) {
+            Spacer(Modifier.height(2.dp))
+            Text(
+                "Tap a card to apply it to the draft",
+                color = MFColors.TextHint, fontSize = 9.sp
+            )
+        }
         Spacer(Modifier.height(10.dp))
         Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            suggestions.forEachIndexed { idx, sug -> SuggestionCard(idx + 1, sug, accentColor) }
+            suggestions.forEachIndexed { idx, sug ->
+                SuggestionCard(idx + 1, sug, accentColor,
+                    onClick = onSuggestionClick?.let { handler -> { handler(sug) } })
+            }
         }
     }
 }
 
 @Composable
-private fun SuggestionCard(rank: Int, suggestion: HeroSuggestion, accentColor: Color) {
+private fun SuggestionCard(
+    rank: Int, suggestion: HeroSuggestion, accentColor: Color,
+    onClick: (() -> Unit)? = null
+) {
     val tierColor = Color(suggestion.hero.tier.colorValue)
     val hasWarning = suggestion.warnings.isNotEmpty()
+    val baseMod = Modifier.width(120.dp)
+    val clickMod = if (onClick != null) baseMod.pressScale(onClick = onClick) else baseMod
     Column(
-        modifier = Modifier.width(120.dp)
+        modifier = clickMod
             .background(MFColors.BgElevated, RoundedCornerShape(10.dp))
             .border(1.dp, if (hasWarning) MFColors.Warning.copy(alpha = 0.7f) else tierColor.copy(alpha = 0.5f),
                 RoundedCornerShape(10.dp))
