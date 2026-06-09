@@ -21,7 +21,7 @@ class HeroMetaFetcher(
             "https://raw.githubusercontent.com/p3hndrx/MLBB-API/main/v1/hero-meta-final.json"
         private val CACHED_JSON_KEY = stringPreferencesKey("hero_meta_json_cache")
         /** Cooldown between network fetches. Re-uses the cached JSON within. */
-        private const val FETCH_THROTTLE_MS = 6L * 60 * 60 * 1000
+        private const val FETCH_THROTTLE_MS = 15L * 60 * 1000   // 15 minutes
     }
 
     /**

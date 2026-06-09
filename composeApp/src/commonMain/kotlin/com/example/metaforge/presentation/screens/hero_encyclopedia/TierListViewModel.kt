@@ -18,13 +18,16 @@ sealed interface TierListUiState {
         val heroes: List<HeroMetaEntry>,
         val filteredHeroes: List<HeroMetaEntry>,
         val selectedLane: HeroLane? = null,
-        val selectedRole: String? = null
+        val selectedRole: String? = null,
+        /** Hero rank data map for per-hero stat lookups in detail screens. */
+        val rankDataMap: Map<Int, HeroRankData> = emptyMap()
     ) : TierListUiState
     data class Error(val message: String) : TierListUiState
 }
 
 class TierListViewModel(
-    private val jsonLoader: suspend () -> String
+    private val jsonLoader: suspend () -> String,
+    private val rankDataLoader: suspend () -> Map<Int, HeroRankData> = { emptyMap() }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TierListUiState>(TierListUiState.Loading)
@@ -37,10 +40,17 @@ class TierListViewModel(
             _uiState.value = TierListUiState.Loading
             try {
                 val jsonString = withContext(Dispatchers.Default) { jsonLoader() }
+                val rankData = try {
+                    withContext(Dispatchers.Default) { rankDataLoader() }
+                } catch (_: Exception) { emptyMap() }
                 val heroes = withContext(Dispatchers.Default) {
-                    HeroMetaRepository.parseAndBuild(jsonString)
+                    HeroMetaRepository.parseAndBuild(jsonString, rankData)
                 }
-                _uiState.value = TierListUiState.Ready(heroes = heroes, filteredHeroes = heroes)
+                _uiState.value = TierListUiState.Ready(
+                    heroes = heroes,
+                    filteredHeroes = heroes,
+                    rankDataMap = rankData
+                )
             } catch (e: Exception) {
                 _uiState.value = TierListUiState.Error(e.message ?: "Failed to load hero data")
             }

@@ -78,6 +78,11 @@ fun HeroListScreen(
 
 @Composable
 private fun HeroListTopBar() {
+    val prefs: com.example.metaforge.data.local.datastore.DraftPreferences = org.koin.compose.koinInject()
+    val lastFetchedAt by prefs.getLastFetchedAt()
+        .collectAsStateWithLifecycle(initialValue = null)
+    val label = com.example.metaforge.core.util.formatLastFetched(lastFetchedAt)
+
     Column {
         Text(
             text = "Hero Tier List",
@@ -86,7 +91,7 @@ private fun HeroListTopBar() {
             fontSize = 17.sp
         )
         Text(
-            text = "Current meta rankings • May 2026",
+            text = "Current meta rankings • Last fetch: $label",
             color = MFColors.TextHint,
             fontSize = 10.sp
         )

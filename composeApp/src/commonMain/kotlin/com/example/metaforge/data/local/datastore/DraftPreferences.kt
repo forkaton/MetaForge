@@ -14,6 +14,7 @@ open class DraftPreferences(
     companion object {
         val LAST_DRAFT_KEY = stringPreferencesKey("last_draft")
         val LAST_FETCH_TS_KEY = longPreferencesKey("last_fetch_ts")
+        val RANK_DATA_JSON_KEY = stringPreferencesKey("rank_data_json_cache")
     }
 
     open suspend fun saveLastDraft(draftData: String) {
@@ -41,5 +42,16 @@ open class DraftPreferences(
 
     open fun getLastFetchedAt(): Flow<Long?> = dataStore.data.map { prefs ->
         prefs[LAST_FETCH_TS_KEY]
+    }
+
+    /** Cache the raw rank API JSON so it survives process death. */
+    open suspend fun saveRankDataJson(json: String) {
+        dataStore.edit { prefs ->
+            prefs[RANK_DATA_JSON_KEY] = json
+        }
+    }
+
+    open fun getRankDataJson(): Flow<String?> = dataStore.data.map { prefs ->
+        prefs[RANK_DATA_JSON_KEY]
     }
 }

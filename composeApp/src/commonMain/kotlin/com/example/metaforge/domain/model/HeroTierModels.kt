@@ -27,7 +27,13 @@ data class HeroMetaEntry(
     val overallScore: Float,
     val strongAgainst: List<HeroMatchupEntry>,
     val weakAgainst: List<HeroMatchupEntry>,
-    val synergies: List<HeroMatchupEntry>
+    val synergies: List<HeroMatchupEntry>,
+    /** Real win rate from API (0.0–1.0), null if unavailable */
+    val winRate: Float? = null,
+    /** Real pick/appearance rate from API (0.0–1.0), null if unavailable */
+    val pickRate: Float? = null,
+    /** Real ban rate from API (0.0–1.0), null if unavailable */
+    val banRate: Float? = null
 )
 
 data class RankStats(
@@ -45,3 +51,15 @@ enum class TimePeriod(val label: String) {
     LAST_7_DAYS("Last 7 Days"),
     LAST_30_DAYS("Last 30 Days")
 }
+
+/** Raw rank statistics for a single hero, from the mlbb.rone.dev API. */
+data class HeroRankData(
+    val heroId: Int,
+    val heroName: String,
+    /** Win rate as a fraction 0.0–1.0 */
+    val winRate: Double,
+    /** Appearance/pick rate as a fraction 0.0–1.0 */
+    val pickRate: Double,
+    /** Ban rate as a fraction 0.0–1.0+ (can exceed 1.0 for multi-ban formats) */
+    val banRate: Double
+)

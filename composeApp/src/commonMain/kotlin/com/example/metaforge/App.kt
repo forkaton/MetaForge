@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.example.metaforge.core.connectivity.ConnectivityObserver
+import com.example.metaforge.data.local.HeroMetaService
 import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.data.local.datastore.ThemePreferences
 import com.example.metaforge.domain.repository.DraftRepository
@@ -37,8 +38,8 @@ import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
 
 /** Cold-open sync throttle: skip [DraftRepository.syncHeroes] if the last
- *  successful fetch was less than 6 hours ago. */
-private const val SYNC_THROTTLE_MS = 6L * 60 * 60 * 1000
+ *  successful fetch was less than 15 minutes ago. */
+private const val SYNC_THROTTLE_MS = 15L * 60 * 1000
 
 @Composable
 fun App() {
@@ -53,6 +54,7 @@ private fun AppContent() {
     val connectivity: ConnectivityObserver = koinInject()
     val draftRepo: DraftRepository         = koinInject()
     val draftPrefs: DraftPreferences       = koinInject()
+    val heroMetaService: HeroMetaService   = koinInject()
 
     val isDark      by themePrefs.isDarkTheme().collectAsStateWithLifecycle(initialValue = true)
     val isConnected by connectivity.isConnected.collectAsStateWithLifecycle()
@@ -76,7 +78,10 @@ private fun AppContent() {
                 val lastAt = draftPrefs.getLastFetchedAt().first()
                 val now = Clock.System.now().toEpochMilliseconds()
                 val isStale = lastAt == null || (now - lastAt) >= SYNC_THROTTLE_MS
-                if (isStale) draftRepo.syncHeroes()
+                if (isStale) {
+                    heroMetaService.invalidateCache()
+                    draftRepo.syncHeroes()
+                }
             } catch (_: Exception) {}
         }
     }
