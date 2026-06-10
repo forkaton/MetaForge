@@ -240,7 +240,7 @@ composeApp/src/
 | W13  Sprint 3: Advanced Features | ✅ Done | API, offline cache, tier list, dark mode, dual suggestions |
 | W14  Sprint 4: Polish & Testing | ✅ Done | Tierban count, party multi-select, squad meta-first, lane-agnostic bans, live data label, 25 unit tests + 8 UI tests, 77% coverage |
 | W15  Sprint 5: Final Preparation | ✅ Done | Click-to-apply recommendations, Squad recommendation auto-refresh, release-signing template, version display in Settings, DEMO_SCRIPT.md, Mermaid architecture diagram, CI re-greened |
-| W16  UAS: Final Demo Day | ⏳ | Presentation |
+| W16  UAS: Final Demo Day | ✅ Done | Presentation |
 
 ---
 
@@ -278,71 +278,18 @@ composeApp/src/
 
 ---
 
-## 9. Build Release APK
-
-Versi yang dibawa ke UAS Demo Day adalah **signed release APK** (versi `1.0.0`, ditampilkan
-di Settings → ABOUT). Konfigurasi sudah disiapkan di `composeApp/build.gradle.kts`;
-yang perlu user/tim kerjakan sebatas membuat keystore dan mengisi `local.properties`.
-
-### 9.1 (Sekali saja) Generate keystore
-
-```bash
-keytool -genkey -v -keystore metaforge-release.jks -keyalg RSA \
-  -keysize 2048 -validity 10000 -alias metaforge
-```
-
-> Keystore (`*.jks`) sudah masuk `.gitignore` — **jangan** commit. Backup di
-> tempat aman (Google Drive pribadi, password manager) karena APK yang dibuild
-> di kemudian hari **harus** pakai keystore yang sama untuk bisa di-update.
-
-### 9.2 Konfigurasi `local.properties`
-
-Tambahkan ke `local.properties` (sudah di-gitignore):
-
-```properties
-METAFORGE_STORE_FILE=metaforge-release.jks
-METAFORGE_STORE_PASSWORD=...
-METAFORGE_KEY_ALIAS=metaforge
-METAFORGE_KEY_PASSWORD=...
-```
-
-Variabel yang sama juga di-resolve dari environment variables — berguna untuk
-CI build. Jika **semua** variabel kosong, `release` build otomatis fallback ke
-debug signing (`assembleDebug` tetap jalan tanpa keystore).
-
-### 9.3 Build
-
-```bash
-./gradlew :composeApp:assembleRelease
-# Output: composeApp/build/outputs/apk/release/composeApp-release.apk
-```
-
-Versi (`versionCode` / `versionName`) di-set di `android.defaultConfig` —
-ikuti **Semantic Versioning** (`MAJOR.MINOR.PATCH`), bump `versionCode` setiap
-release.
-
----
-
-## 10. Download
-
-| Channel | Link |
-|---------|------|
-| Latest Release APK | _(diisi setelah upload ke GitHub Release / e-learning)_ |
-| Architecture / Slide deck | _(diisi setelah upload)_ |
-| Demo backup video | _(diisi setelah upload)_ |
-
-> Demo script lengkap: [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
-
----
-
-## 11. Video Demo Sprint 2
+## 9. Video Demo Sprint 2
 
 https://github.com/user-attachments/assets/9f3c1265-c264-40a0-b0ac-dc754f712ab0
 
-## 12. Video Demo Sprint 3
+## 10. Video Demo Sprint 3
 
 https://github.com/user-attachments/assets/bdf4f982-e067-4f27-87bb-1fedf4255839
 
-## 13. Video Demo Sprint 4
+## 11. Video Demo Sprint 4
 
 https://github.com/user-attachments/assets/b6b57d58-611c-4bd5-b2cd-db5b958d253a
+
+## 12. Video Demo Final
+
+https://youtu.be/QGxr8H4F5jo
