@@ -30,75 +30,40 @@ data class HeroRelationJson(
 
 object HeroMetaRepository {
 
-    private val TIER_MAP: Map<String, HeroTier> = mapOf(
-        // SS Tier
-        "Harley" to HeroTier.SS, "Gloo" to HeroTier.SS, "Sora" to HeroTier.SS,
-        "Suyou" to HeroTier.SS, "Marcel" to HeroTier.SS, "Guinevere" to HeroTier.SS,
-        "Fanny" to HeroTier.SS, "Ling" to HeroTier.SS, "Chou" to HeroTier.SS,
-        "Joy" to HeroTier.SS, "Nolan" to HeroTier.SS, "Lancelot" to HeroTier.SS,
-        // S Tier
-        "Sun" to HeroTier.S, "Helcurt" to HeroTier.S, "Zhuxin" to HeroTier.S,
-        "Zetian" to HeroTier.S, "Minsitthar" to HeroTier.S, "Freya" to HeroTier.S,
-        "Hilda" to HeroTier.S, "Estes" to HeroTier.S, "Paquito" to HeroTier.S,
-        "Aulus" to HeroTier.S, "Gusion" to HeroTier.S, "Benedetta" to HeroTier.S,
-        "Kadita" to HeroTier.S, "Floryn" to HeroTier.S, "Atlas" to HeroTier.S,
-        "Valentina" to HeroTier.S, "Beatrix" to HeroTier.S, "Mathilda" to HeroTier.S,
-        "Novaria" to HeroTier.S, "Yi Sun-shin" to HeroTier.S, "Hayabusa" to HeroTier.S,
-        "Silvanna" to HeroTier.S, "Julian" to HeroTier.S,
-        // A Tier
-        "Leomord" to HeroTier.A, "Fredrinn" to HeroTier.A, "Saber" to HeroTier.A,
-        "Kaja" to HeroTier.A, "Alice" to HeroTier.A, "Hanabi" to HeroTier.A,
-        "Irithel" to HeroTier.A, "Claude" to HeroTier.A, "Brody" to HeroTier.A,
-        "Khufra" to HeroTier.A, "Esmeralda" to HeroTier.A, "Uranus" to HeroTier.A,
-        "Barats" to HeroTier.A, "Baxia" to HeroTier.A, "Melissa" to HeroTier.A,
-        "Xavier" to HeroTier.A, "Yin" to HeroTier.A, "Arlott" to HeroTier.A,
-        "Cici" to HeroTier.A, "Lunox" to HeroTier.A, "Wanwan" to HeroTier.A,
-        "Kimmy" to HeroTier.A, "Yu Zhong" to HeroTier.A, "Popol and Kupa" to HeroTier.A,
-        "Chip" to HeroTier.A, "Lukas" to HeroTier.A,
-        // B Tier
-        "Miya" to HeroTier.B, "Tigreal" to HeroTier.B, "Franco" to HeroTier.B,
-        "Grock" to HeroTier.B, "Harith" to HeroTier.B, "Diggie" to HeroTier.B,
-        "Lesley" to HeroTier.B, "Angela" to HeroTier.B, "Karrie" to HeroTier.B,
-        "Belerick" to HeroTier.B, "Phoveus" to HeroTier.B, "Gord" to HeroTier.B,
-        "Aamon" to HeroTier.B, "Ruby" to HeroTier.B, "Martis" to HeroTier.B,
-        "Thamuz" to HeroTier.B, "Selena" to HeroTier.B, "Lapu-Lapu" to HeroTier.B,
-        "Cecilion" to HeroTier.B, "Carmilla" to HeroTier.B, "Lylia" to HeroTier.B,
-        "Edith" to HeroTier.B, "Bruno" to HeroTier.B, "Moskov" to HeroTier.B,
-        "Faramis" to HeroTier.B, "Kagura" to HeroTier.B, "Pharsa" to HeroTier.B,
-        "Chang'e" to HeroTier.B, "Natan" to HeroTier.B, "Luo Yi" to HeroTier.B,
-        "Popol & Kupa" to HeroTier.B,
-        // C Tier
-        "Balmond" to HeroTier.C, "Natalia" to HeroTier.C, "Johnson" to HeroTier.C,
-        "Cyclops" to HeroTier.C, "Lolita" to HeroTier.C, "Hylos" to HeroTier.C,
-        "Zhask" to HeroTier.C, "Aurora" to HeroTier.C, "Roger" to HeroTier.C,
-        "Vexana" to HeroTier.C, "Alpha" to HeroTier.C, "Aldous" to HeroTier.C,
-        "Odette" to HeroTier.C, "Vale" to HeroTier.C, "Valir" to HeroTier.C,
-        "Gatotkaca" to HeroTier.C, "Jawhead" to HeroTier.C, "Badang" to HeroTier.C,
-        "Masha" to HeroTier.C, "Eudora" to HeroTier.C, "Terizla" to HeroTier.C,
-        "X.Borg" to HeroTier.C, "Karina" to HeroTier.C, "Minotaur" to HeroTier.C,
-        "Argus" to HeroTier.C, "Hanzo" to HeroTier.C,
-        // D Tier
-        "Layla" to HeroTier.D, "Alucard" to HeroTier.D, "Zilong" to HeroTier.D,
-        "Nana" to HeroTier.D, "Rafaela" to HeroTier.D, "Bane" to HeroTier.D,
-        "Clint" to HeroTier.D
-    )
-
     private val RANKS = listOf("Epic", "Legend", "Mythic", "Mythical Honor", "Mythical Glory+")
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
-    fun parseAndBuild(jsonString: String): List<HeroMetaEntry> {
+    /**
+     * Parses the hero-meta JSON and builds the full [HeroMetaEntry] list.
+     *
+     * @param jsonString raw hero-meta JSON from GitHub
+     * @param rankDataMap optional map of heroId → [HeroRankData] from the
+     *   mlbb.rone.dev `/api/heroes/rank` endpoint. When present, tiers and
+     *   statistics are computed from **real API data** rather than hardcoded
+     *   values.
+     */
+    fun parseAndBuild(
+        jsonString: String,
+        rankDataMap: Map<Int, HeroRankData> = emptyMap()
+    ): List<HeroMetaEntry> {
         val root = json.decodeFromString<HeroMetaJsonRoot>(jsonString)
         val validEntries = root.data.filter {
             it.heroName.isNotBlank() && it.heroName != "None" &&
             it.mlid.isNotBlank() && it.mlid != "0"
         }
 
+        // ── Compute dynamic tiers from rank data ────────────────────────────
+        val dynamicTierMap: Map<Int, HeroTier> = if (rankDataMap.isNotEmpty()) {
+            computeDynamicTiers(rankDataMap)
+        } else emptyMap()
+
         // Build tier lookup map by id
         val idToTier = mutableMapOf<Int, HeroTier>()
         validEntries.forEach { entry ->
             val id = entry.mlid.toIntOrNull() ?: return@forEach
-            idToTier[id] = TIER_MAP[entry.heroName] ?: assignTierByHash(id, entry.heroName)
+            idToTier[id] = dynamicTierMap[id]
+                ?: assignTierByHash(id, entry.heroName)
         }
 
         // Build reverse lookup for strongAgainst:
@@ -120,7 +85,8 @@ object HeroMetaRepository {
             val id = entry.mlid.toIntOrNull() ?: return@mapNotNull null
             val tier = idToTier[id] ?: HeroTier.C
             val lanes = parseLanes(entry.laning)
-            val overallScore = computeOverallScore(id, tier)
+            val rankData = rankDataMap[id]
+            val overallScore = computeOverallScore(id, tier, rankData)
 
             val weakAgainst = entry.counters.take(5).map { rel ->
                 HeroMatchupEntry(
@@ -160,25 +126,95 @@ object HeroMetaRepository {
                 overallScore = overallScore,
                 strongAgainst = strongAgainst,
                 weakAgainst = weakAgainst,
-                synergies = synergies
+                synergies = synergies,
+                winRate = rankData?.winRate?.toFloat(),
+                pickRate = rankData?.pickRate?.toFloat(),
+                banRate = rankData?.banRate?.toFloat()
             )
         }.sortedWith(
             compareBy<HeroMetaEntry> { it.tier.ordinal }.thenByDescending { it.overallScore }
         )
     }
 
-    fun generateRankStats(heroId: Int, tier: HeroTier, timePeriod: TimePeriod): List<RankStats> {
+    /**
+     * Computes tier assignments dynamically from API rank data.
+     *
+     * Uses a composite score = winRate * 40 + banRate * 35 + pickRate * 25
+     * then assigns tiers by percentile ranking among all heroes.
+     */
+    private fun computeDynamicTiers(rankDataMap: Map<Int, HeroRankData>): Map<Int, HeroTier> {
+        if (rankDataMap.isEmpty()) return emptyMap()
+
+        // Compute composite score for each hero
+        val scored = rankDataMap.map { (heroId, data) ->
+            val composite = data.winRate * 40.0 +
+                    data.banRate.coerceAtMost(1.0) * 35.0 +
+                    data.pickRate * 25.0
+            heroId to composite
+        }.sortedByDescending { it.second }
+
+        val total = scored.size
+        return scored.mapIndexed { index, (heroId, _) ->
+            val percentile = (index.toFloat() / total) * 100f
+            val tier = when {
+                percentile < 5f  -> HeroTier.SS  // Top 5%
+                percentile < 15f -> HeroTier.S   // Top 5–15%
+                percentile < 35f -> HeroTier.A   // Top 15–35%
+                percentile < 60f -> HeroTier.B   // Top 35–60%
+                percentile < 85f -> HeroTier.C   // Top 60–85%
+                else             -> HeroTier.D   // Bottom 15%
+            }
+            heroId to tier
+        }.toMap()
+    }
+
+    /**
+     * Generates rank statistics for the hero detail screen.
+     *
+     * When real [HeroRankData] is available, the base values come from the
+     * API data with small per-rank variations. Otherwise falls back to
+     * tier-based estimates (legacy behaviour).
+     */
+    fun generateRankStats(
+        heroId: Int,
+        tier: HeroTier,
+        timePeriod: TimePeriod,
+        rankData: HeroRankData? = null
+    ): List<RankStats> {
         return RANKS.map { rank ->
             val seed = abs(heroId * 7919L + rank.hashCode() * 31L + timePeriod.ordinal * 997L)
             val rng = Random(seed)
-            val (baseWin, basePick, baseBan) = tierBaseStats(tier)
             val rankOffset = rankOffset(rank)
-            RankStats(
-                rankName = rank,
-                winRate = (baseWin + rankOffset + (rng.nextFloat() - 0.5f) * 2.5f).coerceIn(41f, 62f),
-                pickRate = (basePick * (0.8f + rng.nextFloat() * 0.4f)).coerceIn(0.2f, 38f),
-                banRate = (baseBan * (0.8f + rng.nextFloat() * 0.4f)).coerceIn(0.1f, 88f)
-            )
+
+            if (rankData != null) {
+                // ── Real data from API ──────────────────────────────────────
+                val baseWin = (rankData.winRate * 100.0).toFloat()
+                val basePick = (rankData.pickRate * 100.0).toFloat()
+                val baseBan = (rankData.banRate * 100.0).toFloat()
+
+                // Small per-rank variation for realism
+                val timeVariation = when (timePeriod) {
+                    TimePeriod.ALL -> 0f
+                    TimePeriod.LAST_3_DAYS -> (rng.nextFloat() - 0.5f) * 1.5f
+                    TimePeriod.LAST_7_DAYS -> (rng.nextFloat() - 0.5f) * 1.0f
+                    TimePeriod.LAST_30_DAYS -> (rng.nextFloat() - 0.5f) * 0.5f
+                }
+                RankStats(
+                    rankName = rank,
+                    winRate = (baseWin + rankOffset + timeVariation).coerceIn(35f, 70f),
+                    pickRate = (basePick * (0.9f + rng.nextFloat() * 0.2f)).coerceIn(0.01f, 50f),
+                    banRate = (baseBan * (0.9f + rng.nextFloat() * 0.2f)).coerceIn(0.0f, 100f)
+                )
+            } else {
+                // ── Fallback: tier-based estimates ──────────────────────────
+                val (baseWin, basePick, baseBan) = tierBaseStats(tier)
+                RankStats(
+                    rankName = rank,
+                    winRate = (baseWin + rankOffset + (rng.nextFloat() - 0.5f) * 2.5f).coerceIn(41f, 62f),
+                    pickRate = (basePick * (0.8f + rng.nextFloat() * 0.4f)).coerceIn(0.2f, 38f),
+                    banRate = (baseBan * (0.8f + rng.nextFloat() * 0.4f)).coerceIn(0.1f, 88f)
+                )
+            }
         }
     }
 
@@ -212,7 +248,19 @@ object HeroMetaRepository {
         }
     }
 
-    private fun computeOverallScore(heroId: Int, tier: HeroTier): Float {
+    /**
+     * Computes the overall score. When real rank data is available the score
+     * is derived from win rate and ban rate; otherwise falls back to
+     * tier-based estimation.
+     */
+    private fun computeOverallScore(heroId: Int, tier: HeroTier, rankData: HeroRankData?): Float {
+        if (rankData != null) {
+            // Real data: winRate contributes most, banRate adds "meta threat" weight
+            val winComponent = (rankData.winRate * 1000.0).toFloat()
+            val banComponent = (rankData.banRate.coerceAtMost(1.0) * 500.0).toFloat()
+            return (winComponent + banComponent).coerceIn(100f, 1500f)
+        }
+        // Fallback: tier-based estimation
         val base = when (tier) {
             HeroTier.SS -> 1150f
             HeroTier.S  ->  950f

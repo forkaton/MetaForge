@@ -17,6 +17,10 @@ out/
 # Local configuration (secrets, machine-specific paths)
 local.properties
 
+# Release signing — keystore must never be committed
+*.jks
+*.keystore
+
 # Android
 captures/
 .externalNativeBuild/

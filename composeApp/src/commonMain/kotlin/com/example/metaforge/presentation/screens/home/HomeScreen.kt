@@ -32,7 +32,6 @@ import coil3.compose.AsyncImage
 import com.example.metaforge.core.util.formatLastFetched
 import com.example.metaforge.data.local.datastore.DraftPreferences
 import com.example.metaforge.domain.model.HeroMetaEntry
-import com.example.metaforge.domain.model.HeroTier
 import com.example.metaforge.presentation.components.LandOfDawnBanner
 import com.example.metaforge.presentation.components.MetaforgeLogo
 import com.example.metaforge.presentation.components.ToolCard
@@ -43,6 +42,20 @@ import com.example.metaforge.ui.theme.MFColors
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
+// ─── KMP-safe number formatting ─────────────────────────────────────────────
+private fun Float.toFixed(digits: Int): String {
+    val negative = this < 0
+    val v = kotlin.math.abs(this)
+    var factor = 1L
+    repeat(digits) { factor *= 10 }
+    val scaled = kotlin.math.round(v * factor).toLong()
+    val intPart = scaled / factor
+    val fracPart = scaled % factor
+    val sign = if (negative) "-" else ""
+    return if (digits <= 0) "$sign$intPart"
+    else "$sign$intPart.${fracPart.toString().padStart(digits, '0')}"
+}
+
 @Composable
 fun HomeScreen(
     onNavigateToDraftSetup: () -> Unit,
@@ -52,9 +65,11 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val heroes      = (uiState as? TierListUiState.Ready)?.heroes ?: emptyList()
-    val topWinHero  = heroes.firstOrNull { it.tier == HeroTier.SS }
-    val topBanHero  = heroes.filter { it.tier == HeroTier.SS }.getOrNull(1)
-    val topPickHero = heroes.firstOrNull { it.tier == HeroTier.S }
+
+    // Pick top heroes by REAL API stats (win rate, ban rate, pick rate)
+    val topWinHero  = heroes.filter { it.winRate != null }.maxByOrNull { it.winRate!! }
+    val topBanHero  = heroes.filter { it.banRate != null }.maxByOrNull { it.banRate!! }
+    val topPickHero = heroes.filter { it.pickRate != null }.maxByOrNull { it.pickRate!! }
 
     // No public API exposes the MLBB season number, so we surface the next
     // best signal: when the data was last refreshed online.
@@ -179,11 +194,11 @@ private fun MetaSnapshotRow(
             .padding(horizontal = 12.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        SnapshotStat("TOP WIN", topWin?.name ?: "—",  "54.5%", topWin?.portraitUrl,  topWin?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
+        SnapshotStat("TOP WIN", topWin?.name ?: "—",  topWin?.winRate?.let { "${(it * 100).toFixed(1)}%" } ?: "—", topWin?.portraitUrl,  topWin?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
         Box(Modifier.width(1.dp).height(40.dp).align(Alignment.CenterVertically).background(MFColors.BgElevated))
-        SnapshotStat("TOP BAN",   topBan?.name ?: "—",  "65.2%", topBan?.portraitUrl,  topBan?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
+        SnapshotStat("TOP BAN",   topBan?.name ?: "—",  topBan?.banRate?.let { "${(it * 100).toFixed(1)}%" } ?: "—", topBan?.portraitUrl,  topBan?.tier?.color()  ?: MFColors.TextHint, Modifier.weight(1f))
         Box(Modifier.width(1.dp).height(40.dp).align(Alignment.CenterVertically).background(MFColors.BgElevated))
-        SnapshotStat("TOP PICK",   topPick?.name ?: "—", "22.1%", topPick?.portraitUrl, topPick?.tier?.color() ?: MFColors.TextHint, Modifier.weight(1f))
+        SnapshotStat("TOP PICK",   topPick?.name ?: "—", topPick?.pickRate?.let { "${(it * 100).toFixed(1)}%" } ?: "—", topPick?.portraitUrl, topPick?.tier?.color() ?: MFColors.TextHint, Modifier.weight(1f))
     }
 }
 

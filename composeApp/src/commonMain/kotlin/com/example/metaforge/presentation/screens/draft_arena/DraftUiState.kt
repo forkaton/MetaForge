@@ -22,7 +22,9 @@ data class HeroSuggestion(
 data class PickSuggestionGroup(
     val label: String,
     val lane: HeroLane?,
-    val suggestions: List<HeroSuggestion>
+    val suggestions: List<HeroSuggestion>,
+    /** Ally slot this group's recommendations fill when clicked. Null = no active target. */
+    val targetSlotIndex: Int? = null
 )
 
 sealed interface DraftUiState {

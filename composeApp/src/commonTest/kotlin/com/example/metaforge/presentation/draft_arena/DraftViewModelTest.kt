@@ -5,6 +5,7 @@ import com.example.metaforge.data.local.HeroMetaService
 import com.example.metaforge.domain.model.DraftState
 import com.example.metaforge.domain.model.Hero
 import com.example.metaforge.domain.model.HeroLane
+import com.example.metaforge.domain.model.HeroRankData
 import com.example.metaforge.domain.repository.DraftRepository
 import com.example.metaforge.presentation.screens.draft_arena.DraftUiState
 import com.example.metaforge.presentation.screens.draft_arena.DraftViewModel
@@ -68,7 +69,21 @@ class DraftViewModelTest {
         ]}
     """.trimIndent()
 
-    private fun heroMetaService(loader: suspend () -> String = { metaJson }) = HeroMetaService(loader)
+    /**
+     * Rank data crafted so [computeDynamicTiers] orders the fixture heroes deterministically:
+     * Fanny composite-tops the chart → SS, then Bruno, Layla, Miya, Estes descending.
+     * Tests that hinge on tier-driven sorting (bans, meta-first picks) depend on this order.
+     */
+    private val rankData: Map<Int, HeroRankData> = mapOf(
+        11 to HeroRankData(11, "Fanny",  winRate = 0.58, pickRate = 0.30, banRate = 0.80),
+        15 to HeroRankData(15, "Bruno",  winRate = 0.55, pickRate = 0.20, banRate = 0.40),
+        13 to HeroRankData(13, "Layla",  winRate = 0.52, pickRate = 0.15, banRate = 0.20),
+        14 to HeroRankData(14, "Miya",   winRate = 0.50, pickRate = 0.10, banRate = 0.10),
+        12 to HeroRankData(12, "Estes",  winRate = 0.48, pickRate = 0.05, banRate = 0.05)
+    )
+
+    private fun heroMetaService(loader: suspend () -> String = { metaJson }) =
+        HeroMetaService(loader, rankDataLoader = { rankData })
 
     private val dummy = Hero(id = 999, name = "Dummy", lane = HeroLane.MID_LANE)
 

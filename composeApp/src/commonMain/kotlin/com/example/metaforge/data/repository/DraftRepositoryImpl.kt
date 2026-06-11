@@ -52,6 +52,25 @@ class DraftRepositoryImpl(
                 }
             } ?: emptyList()
             if (heroes.isNotEmpty()) database.saveHeroes(heroes)
+
+            // Also fetch rank data (win rate, pick rate, ban rate) from the API
+            // and cache as JSON so it can be loaded by HeroMetaService.
+            try {
+                val rankResponse = api.fetchHeroesRank()
+                val rankRecords = rankResponse.data?.records
+                if (!rankRecords.isNullOrEmpty()) {
+                    val rankJson = kotlinx.serialization.json.Json.encodeToString(
+                        kotlinx.serialization.builtins.ListSerializer(
+                            com.example.metaforge.data.remote.api.MlbbRankRecord.serializer()
+                        ),
+                        rankRecords
+                    )
+                    prefs?.saveRankDataJson(rankJson)
+                }
+            } catch (_: Exception) {
+                // Rank data fetch is best-effort; positions sync already succeeded
+            }
+
             // Stamp the moment of a successful HTTP round-trip — even if the
             // parsed roster ended up empty, the network was clearly reachable.
             // The home label cares about "did we reach the server", not "did

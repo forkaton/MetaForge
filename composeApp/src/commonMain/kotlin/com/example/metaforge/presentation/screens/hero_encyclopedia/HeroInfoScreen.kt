@@ -55,7 +55,9 @@ fun HeroInfoScreen(
     viewModel: TierListViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val hero = (uiState as? TierListUiState.Ready)?.heroes?.find { it.id == heroId }
+    val readyState = uiState as? TierListUiState.Ready
+    val hero = readyState?.heroes?.find { it.id == heroId }
+    val rankDataMap = readyState?.rankDataMap ?: emptyMap()
 
     Scaffold(
         containerColor = MFColors.Bg,
@@ -82,13 +84,21 @@ fun HeroInfoScreen(
                 CircularProgressIndicator(color = MFColors.Accent)
             }
         } else {
-            HeroDetailContent(hero = hero, modifier = Modifier.padding(padding))
+            HeroDetailContent(
+                hero = hero,
+                rankData = rankDataMap[heroId],
+                modifier = Modifier.padding(padding)
+            )
         }
     }
 }
 
 @Composable
-private fun HeroDetailContent(hero: HeroMetaEntry, modifier: Modifier = Modifier) {
+private fun HeroDetailContent(
+    hero: HeroMetaEntry,
+    rankData: com.example.metaforge.domain.model.HeroRankData?,
+    modifier: Modifier = Modifier
+) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Overview", "Matchups")
 
@@ -107,7 +117,7 @@ private fun HeroDetailContent(hero: HeroMetaEntry, modifier: Modifier = Modifier
                 }
             }
         }
-        item { when (selectedTab) { 0 -> OverviewTab(hero); 1 -> MatchupsTab(hero) } }
+        item { when (selectedTab) { 0 -> OverviewTab(hero, rankData); 1 -> MatchupsTab(hero) } }
     }
 }
 
@@ -174,11 +184,11 @@ private fun MetaTag(text: String, bg: Color, borderColor: Color) {
 }
 
 @Composable
-private fun OverviewTab(hero: HeroMetaEntry) {
+private fun OverviewTab(hero: HeroMetaEntry, rankData: com.example.metaforge.domain.model.HeroRankData?) {
     var selectedStatType by remember { mutableStateOf(StatType.WIN_RATE) }
     var selectedPeriod by remember { mutableStateOf(TimePeriod.ALL) }
-    val stats = remember(selectedPeriod) {
-        HeroMetaRepository.generateRankStats(hero.id, hero.tier, selectedPeriod)
+    val stats = remember(selectedPeriod, rankData) {
+        HeroMetaRepository.generateRankStats(hero.id, hero.tier, selectedPeriod, rankData)
     }
 
     Column(modifier = Modifier.padding(16.dp)) {

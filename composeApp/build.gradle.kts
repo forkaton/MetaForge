@@ -147,12 +147,52 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    
+
+    // ── Release signing ──────────────────────────────────────────────────────
+    // Reads keystore from local.properties (or env vars) so credentials stay
+    // out of git. If no METAFORGE_STORE_FILE is configured, release builds fall
+    // back to the debug signing config — fine for CI/contributors who only run
+    // `assembleDebug`. To produce a *real* signed release APK:
+    //   1) keytool -genkey -v -keystore metaforge-release.jks -keyalg RSA \
+    //        -keysize 2048 -validity 10000 -alias metaforge
+    //   2) In local.properties add:
+    //        METAFORGE_STORE_FILE=metaforge-release.jks
+    //        METAFORGE_STORE_PASSWORD=...
+    //        METAFORGE_KEY_ALIAS=metaforge
+    //        METAFORGE_KEY_PASSWORD=...
+    //   3) ./gradlew :composeApp:assembleRelease
+    val releaseStoreFile = localProperties.getProperty("METAFORGE_STORE_FILE")
+        ?: System.getenv("METAFORGE_STORE_FILE")
+    val releaseStorePassword = localProperties.getProperty("METAFORGE_STORE_PASSWORD")
+        ?: System.getenv("METAFORGE_STORE_PASSWORD")
+    val releaseKeyAlias = localProperties.getProperty("METAFORGE_KEY_ALIAS")
+        ?: System.getenv("METAFORGE_KEY_ALIAS")
+    val releaseKeyPassword = localProperties.getProperty("METAFORGE_KEY_PASSWORD")
+        ?: System.getenv("METAFORGE_KEY_PASSWORD")
+    val hasReleaseKeystore = releaseStoreFile != null &&
+            file(releaseStoreFile).exists() &&
+            releaseStorePassword != null &&
+            releaseKeyAlias != null &&
+            releaseKeyPassword != null
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         debug {
             enableUnitTestCoverage = true
         }
         release {
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
